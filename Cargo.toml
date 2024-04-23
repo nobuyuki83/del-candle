@@ -6,7 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+png = "0.17.13"
+nalgebra = "0.32.5"
 candle-core = { git = "https://github.com/huggingface/candle.git" }
-anyhow = "1.0.81"
+anyhow = "1.0.82"
+rand = "0.8.5"
+image = "0.25.1"
+#
 del-geo = { path = "../del-geo"}
 del-msh = { path = "../del-msh"}
+del-canvas = { path = "../del-canvas"}
