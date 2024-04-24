@@ -1,6 +1,5 @@
 use std::ops::Deref;
 use candle_core::{CpuStorage, Layout, Shape, Tensor};
-use image::GenericImageView;
 
 struct Layer {
     tri2vtx: candle_core::Tensor,
@@ -46,6 +45,7 @@ impl candle_core::CustomOp1 for Layer {
     /// This function takes as argument the argument `arg` used in the forward pass, the result
     /// produced by the forward operation `res` and the gradient of the result `grad_res`.
     /// The function should return the gradient of the argument.
+    #[allow(clippy::identity_op)]
     fn bwd(&self, vtx2color: &Tensor, pix2color: &Tensor, dw_pix2color: &Tensor)
         -> candle_core::Result<Option<Tensor>> {
         let (num_vtx, num_channels) = vtx2color.shape().dims2()?;
@@ -71,7 +71,7 @@ impl candle_core::CustomOp1 for Layer {
         assert_eq!(dw_pix2color.len(), height * width * num_channels);
         //
         let mut dw_vtx2color = vec!(0f32; num_vtx * num_channels);
-        let transform_inv = self.transform.clone().try_inverse().unwrap();
+        let transform_inv = self.transform.try_inverse().unwrap();
         for i_h in 0..height {
             for i_w in 0..width {
                 let p_xy = transform_inv * nalgebra::Vector3::<f32>::new(
@@ -104,6 +104,7 @@ impl candle_core::CustomOp1 for Layer {
 #[test]
 fn optimize_vtxcolor() -> anyhow::Result<()> {
     let img_trg = {
+        use image::GenericImageView;
         let img_trg = image::open("tesla.png").unwrap();
         let (width, height) = img_trg.dimensions();
         let (width, height ) = (width as usize, height as usize);

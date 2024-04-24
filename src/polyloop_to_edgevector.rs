@@ -1,8 +1,7 @@
 use std::ops::Deref;
 use candle_core::{CpuStorage, Layout, Shape, Tensor};
-use rand::Rng;
 
-struct Layer {
+pub struct Layer {
 }
 
 impl candle_core::CustomOp1 for crate::polyloop_to_edgevector::Layer {
@@ -33,7 +32,7 @@ impl candle_core::CustomOp1 for crate::polyloop_to_edgevector::Layer {
     /// This function takes as argument the argument `arg` used in the forward pass, the result
     /// produced by the forward operation `res` and the gradient of the result `grad_res`.
     /// The function should return the gradient of the argument.
-    fn bwd(&self, vtx2xy: &Tensor, edge2xy: &Tensor, dw_edge2xy: &Tensor)
+    fn bwd(&self, _vtx2xy: &Tensor, _edge2xy: &Tensor, dw_edge2xy: &Tensor)
         -> candle_core::Result<Option<Tensor>> {
         let (num_vtx, num_dim) = dw_edge2xy.shape().dims2()?;
         let dw_edge2xy = dw_edge2xy.storage_and_layout().0;
@@ -54,7 +53,7 @@ impl candle_core::CustomOp1 for crate::polyloop_to_edgevector::Layer {
             dw_vtx2xy,
             candle_core::Shape::from((num_vtx, num_dim)),
             &candle_core::Device::Cpu)?;
-        return Ok(Some(dw_vtx2xy));
+        Ok(Some(dw_vtx2xy))
 
     }
 
@@ -66,6 +65,7 @@ fn edge_length_constraint() ->  anyhow::Result<()> {
     let edge_length = 2.0f32 * std::f32::consts::PI / num_vtx as f32;
     let mut vtx2xy = del_msh::polyloop2::from_circle(1.0, num_vtx);
     {
+        use rand::Rng;
         let mut rng = rand::thread_rng();
         for mut vtx in vtx2xy.column_iter_mut() {
             vtx += nalgebra::Vector2::<f32>::new(rng.gen(), rng.gen());

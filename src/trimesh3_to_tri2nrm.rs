@@ -76,7 +76,7 @@ impl candle_core::CustomOp1 for Layer {
             grad,
             candle_core::Shape::from((num_vtx, 3)),
             &candle_core::Device::Cpu)?;
-        return Ok(Some(grad));
+        Ok(Some(grad))
     }
 }
 

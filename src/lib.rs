@@ -1,7 +1,8 @@
-mod trimesh3_to_tri2nrm;
-mod meshtri2_vtxcolor_to_image;
-mod polyloop_to_edgevector;
-mod polyloop2_to_area;
+pub mod trimesh3_to_tri2nrm;
+pub mod render_meshtri2_vtxcolor;
+pub mod polyloop_to_edgevector;
+pub mod polyloop2_to_area;
+pub mod polyloop2_to_diffcoord;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right

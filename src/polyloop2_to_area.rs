@@ -9,6 +9,7 @@ impl candle_core::CustomOp1 for crate::polyloop2_to_area::Layer {
         "polyloop_to_edgevector"
     }
 
+    #[allow(clippy::identity_op)]
     fn cpu_fwd(&self, storage: &CpuStorage, layout: &Layout)
                -> candle_core::Result<(CpuStorage, Shape)>
     {
@@ -30,7 +31,8 @@ impl candle_core::CustomOp1 for crate::polyloop2_to_area::Layer {
     /// This function takes as argument the argument `arg` used in the forward pass, the result
     /// produced by the forward operation `res` and the gradient of the result `grad_res`.
     /// The function should return the gradient of the argument.
-    fn bwd(&self, vtx2xy: &Tensor, area: &Tensor, dw_area: &Tensor)
+    #[allow(clippy::identity_op)]
+    fn bwd(&self, vtx2xy: &Tensor, _area: &Tensor, dw_area: &Tensor)
            -> candle_core::Result<Option<Tensor>> {
         let dw_area = dw_area.storage_and_layout().0;
         let dw_area = match dw_area.deref() {
@@ -59,40 +61,48 @@ impl candle_core::CustomOp1 for crate::polyloop2_to_area::Layer {
             dw_vtx2xy,
             candle_core::Shape::from((num_vtx, 2)),
             &candle_core::Device::Cpu)?;
-        return Ok(Some(dw_vtx2xy));
+        Ok(Some(dw_vtx2xy))
     }
+}
+
+#[test]
+fn test_forward() -> anyhow::Result<()> {
+    let num_vtx = 64;
+    let vtx2xy = del_msh::polyloop2::from_circle(1.0, num_vtx);
+    let vtx2xy = {
+        candle_core::Tensor::from_slice(
+            vtx2xy.as_slice(),
+            candle_core::Shape::from((vtx2xy.ncols(), 2)),
+            &candle_core::Device::Cpu).unwrap()
+    };
+    let render = crate::polyloop2_to_area::Layer {};
+    let area = vtx2xy.apply_op1(render)?;
+    let sum = area.to_vec0::<f32>()?;
+    assert!((sum - std::f32::consts::PI).abs() < 0.01);
+    Ok(())
 }
 
 #[test]
 fn are_constraint() -> anyhow::Result<()> {
     let num_vtx = 64;
-    let edge_length = 2.0f32 * std::f32::consts::PI / num_vtx as f32;
     let mut vtx2xy = del_msh::polyloop2::from_circle(1.0, num_vtx);
-    /*
     {
+        use rand::Rng;
         let mut rng = rand::thread_rng();
         for mut vtx in vtx2xy.column_iter_mut() {
             vtx += nalgebra::Vector2::<f32>::new(rng.gen(), rng.gen());
         }
     }
-     */
     let vtx2xy = {
         candle_core::Var::from_slice(
             vtx2xy.as_slice(),
             candle_core::Shape::from((vtx2xy.ncols(), 2)),
             &candle_core::Device::Cpu).unwrap()
     };
-
-    for iter in 0..100 {
+    for iter in 0..200 {
         let render = crate::polyloop2_to_area::Layer {};
         let area = vtx2xy.apply_op1(render)?;
-        {  // assert sum of all vectors are zero
-            let sum = area.to_vec0::<f32>()?;
-            dbg!(iter, sum);
-            if iter == 0 {
-                assert!((sum - std::f32::consts::PI).abs() < 0.01);
-            }
-        }
+        dbg!(iter, area.to_vec0::<f32>()?);
         let area_sq = area.sqr()?;
         let grad = area_sq.backward()?;
         let dw_vtx2xyz = grad.get(&vtx2xy).unwrap();
@@ -103,18 +113,6 @@ fn are_constraint() -> anyhow::Result<()> {
                 format!("target/polyloop_{}.obj", iter),
                 &vtx2xy, 2);
         }
-        /*
-        {
-            let vtx2xy: Vec<_> = vtx2xy.flatten_all()?.to_vec1::<f32>()?;
-            let vtx2xyz = del_msh::vtx2xyz::from_2d_to_3d(&vtx2xy);
-            let vtx2xyz = del_msh::vtx2xyz::from_slice_to_nalgebra_matrix::<f32,3>(&vtx2xyz);
-            let vtx2framex = del_msh::polyloop3::vtx2framex(vtx2xyz.as_slice());
-            let (tri2vtxt, vtxt2xyz) = del_msh::polyloop3::to_trimesh3_torus(&vtx2xyz, &vtx2framex, 0.1f32, 32);
-            let _ = del_msh::io_obj::save_tri_mesh_(
-                format!("target/polyloop_{}.obj", iter),
-                &tri2vtxt, &vtxt2xyz, 3);
-        }
-         */
     }
     Ok(())
 }
