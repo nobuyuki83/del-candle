@@ -93,7 +93,7 @@ fn main() -> anyhow::Result<()>{
             let hoge = del_msh::polyloop::to_cylinder_trimeshes(
                 &vtx2xy, 2, 100.);
             // let _ = del_msh::io_obj::save_polyloop_(format!("target/polyloop_{}.obj", iter), &vtx2xy, 2);
-            let _ = del_msh::io_obj::save_tri_mesh_(
+            let _ = del_msh::io_obj::save_tri2vtx_vtx2xyz(
                 format!("target/polyloop_{}.obj", iter/3),
                 &hoge.0, &hoge.1, 3);
         }

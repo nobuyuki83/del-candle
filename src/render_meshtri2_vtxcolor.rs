@@ -124,7 +124,8 @@ fn optimize_vtxcolor() -> anyhow::Result<()> {
         0., 0., 1.);
     let (tri2vtx, vtx2xyz)
         = del_msh::trimesh2_dynamic::meshing_from_polyloop2::<i64, f32>(
-        &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0], 0.03);
+        &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0],
+        0.03, 0.03);
     let num_vtx = vtx2xyz.len() / 2;
     let vtx2xy = candle_core::Tensor::from_vec(
         vtx2xyz,

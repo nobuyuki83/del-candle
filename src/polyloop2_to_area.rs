@@ -2,6 +2,7 @@ use std::ops::Deref;
 
 use candle_core::{CpuStorage, Layout, Shape, Tensor};
 
+#[derive(Clone, Copy)]
 struct Layer {}
 
 impl candle_core::CustomOp1 for crate::polyloop2_to_area::Layer {
@@ -66,24 +67,50 @@ impl candle_core::CustomOp1 for crate::polyloop2_to_area::Layer {
 }
 
 #[test]
-fn test_forward() -> anyhow::Result<()> {
+fn test_backward() -> anyhow::Result<()> {
     let num_vtx = 64;
     let vtx2xy = del_msh::polyloop2::from_circle(1.0, num_vtx);
     let vtx2xy = {
-        candle_core::Tensor::from_slice(
+        candle_core::Var::from_slice(
             vtx2xy.as_slice(),
-            candle_core::Shape::from((vtx2xy.ncols(), 2)),
+            candle_core::Shape::from((num_vtx, 2)),
             &candle_core::Device::Cpu).unwrap()
     };
     let render = crate::polyloop2_to_area::Layer {};
-    let area = vtx2xy.apply_op1(render)?;
-    let sum = area.to_vec0::<f32>()?;
-    assert!((sum - std::f32::consts::PI).abs() < 0.01);
+    let area0 = vtx2xy.apply_op1(render)?;
+    {  // check area is circle
+        let area0 = area0.to_vec0::<f32>()?;
+        assert!((area0 - std::f32::consts::PI).abs() < 0.01);
+    }
+    { // add perturbation
+        let rand0 = &candle_core::Tensor::randn(
+            1f32, 1f32, (num_vtx, 2), &candle_core::Device::Cpu)?;
+        vtx2xy.add(&rand0)?;
+    }
+    let area0 = vtx2xy.apply_op1(render)?;
+    let grad = area0.backward()?;
+    let area0 = area0.to_vec0::<f32>()?;
+    let dw_vtx2xy = grad.get(&vtx2xy).unwrap();
+    let dw_vtx2xy = dw_vtx2xy.flatten_all()?.to_vec1::<f32>()?;
+    let eps = 1.0e-2f32;
+    for i_vtx in 0..num_vtx {
+        for i_dim in 0..2 {
+            let mut vtx2xy1 = vtx2xy.clone().flatten_all()?.to_vec1::<f32>()?;
+            vtx2xy1[i_vtx*2+i_dim] += eps;
+            let vtx2xy1 = candle_core::Tensor::from_vec(
+                vtx2xy1, (num_vtx, 2), &candle_core::Device::Cpu)?;
+            let area1 = vtx2xy1.apply_op1(render)?;
+            let area1 = area1.to_vec0::<f32>()?;
+            let da0 = (area1-area0)/eps;
+            let da1 = dw_vtx2xy[i_vtx*2+i_dim];
+            assert!((da0-da1).abs()<1.0e-4);
+        }
+    }
     Ok(())
 }
 
 #[test]
-fn are_constraint() -> anyhow::Result<()> {
+fn area_constraint() -> anyhow::Result<()> {
     let num_vtx = 64;
     let mut vtx2xy = del_msh::polyloop2::from_circle(1.0, num_vtx);
     {
@@ -109,7 +136,7 @@ fn are_constraint() -> anyhow::Result<()> {
         let _ = vtx2xy.set(&vtx2xy.as_tensor().sub(&(dw_vtx2xyz * 0.1)?)?);
         if iter % 10 == 0 {
             let vtx2xy: Vec<_> = vtx2xy.flatten_all()?.to_vec1::<f32>()?;
-            let _ = del_msh::io_obj::save_polyloop_(
+            let _ = del_msh::io_obj::save_vtx2xyz_as_polyloop(
                 format!("target/polyloop_{}.obj", iter),
                 &vtx2xy, 2);
         }

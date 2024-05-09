@@ -54,7 +54,7 @@ impl candle_core::CustomOp1 for Layer {
             candle_core::Storage::Cpu(dw_tr2nrm) => { dw_tr2nrm.as_slice::<f32>()? }
             _ => { panic!() }
         };
-        let mut grad = vec!(0f32; num_vtx * 3);
+        let mut dw_vtx2xyz = vec!(0f32; num_vtx * 3);
         for (i_tri, node2vtx) in tri2vtx.chunks(3).enumerate() {
             let (i0, i1, i2)
                 = (node2vtx[0] as usize, node2vtx[1] as usize, node2vtx[2] as usize);
@@ -67,16 +67,16 @@ impl candle_core::CustomOp1 for Layer {
             let q1 = dw_nrm.transpose() * dw[1];
             let q2 = dw_nrm.transpose() * dw[2];
             for i in 0..3 {
-                grad[i0 * 3 + i] += q0[i];
-                grad[i1 * 3 + i] += q1[i];
-                grad[i2 * 3 + i] += q2[i];
+                dw_vtx2xyz[i0 * 3 + i] += q0[i];
+                dw_vtx2xyz[i1 * 3 + i] += q1[i];
+                dw_vtx2xyz[i2 * 3 + i] += q2[i];
             }
         }
-        let grad = candle_core::Tensor::from_vec(
-            grad,
+        let dw_vtx2xyz = candle_core::Tensor::from_vec(
+            dw_vtx2xyz,
             candle_core::Shape::from((num_vtx, 3)),
             &candle_core::Device::Cpu)?;
-        Ok(Some(grad))
+        Ok(Some(dw_vtx2xyz))
     }
 }
 
