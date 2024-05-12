@@ -1,11 +1,5 @@
 use del_msh::io_svg::{polybezier2polyloop, svg_loops_from_outline_path, svg_outline_path_from_shape};
 
-fn rotate90(edge2xy: candle_core::Tensor) -> candle_core::Result<candle_core::Tensor> {
-    let x = edge2xy.get_on_dim(1, 0)?;
-    let y = edge2xy.get_on_dim(1, 1)?;
-    candle_core::Tensor::stack(&[(y * -1.)?,x], 1)
-}
-
 fn main() -> anyhow::Result<()>{
     let vtx2xy = {
         let str0 = "M2792 12789 c-617 -83 -1115 -568 -1244 -1212 -32 -160 -32 -443 0 \
@@ -54,36 +48,13 @@ fn main() -> anyhow::Result<()>{
         candle_core::Shape::from((vtx2xy.len()/2, 2)),
         &candle_core::Device::Cpu).unwrap();
     for iter in 0..300 {
-        let polyloop_to_edgevector = del_candle::polyloop_to_edgevector::Layer {};
-        let edge2xy = vtx2xy.apply_op1(polyloop_to_edgevector)?;
-        let edge2nrm = rotate90(edge2xy)?;
-        /*
-        let edge2len = edge2nrm.sqr().unwrap().sum(1)?.sqrt()?;
-        let edge2len = candle_core::Tensor::stack(&[edge2len.clone(), edge2len.clone()], 1)?;
-         let edge2unrm = edge2nrm.div(&edge2len)?;
-        // dbg!(edge2unrm.sqr().unwrap().sum(1)?.sqrt()?.to_vec1::<f32>());
-         */
-        let mut edge2norm_trg = edge2nrm.flatten_all()?.to_vec1::<f32>()?;
-        for norm in edge2norm_trg.chunks_mut(2) {
-            let x0 = norm[0];
-            let y0 = norm[1];
-            let len = (x0*x0 + y0*y0).sqrt();
-            if y0 > x0 && y0 > -x0 { norm[0] = 0f32; norm[1] = len; }
-            if y0 < x0 && y0 < -x0 { norm[0] = 0f32; norm[1] = -len; }
-            if y0 > x0 && y0 < -x0 { norm[0] = -len; norm[1] = 0f32; }
-            if y0 < x0 && y0 > -x0 { norm[0] = len; norm[1] = 0f32; }
-        }
-        let edge2norm_trg = candle_core::Tensor::from_slice(
-            edge2norm_trg.as_slice(),
-            candle_core::Shape::from(vtx2xy.shape()),
-            &candle_core::Device::Cpu).unwrap();
-        let unorm_diff = edge2nrm.sub(&edge2norm_trg)?.sqr()?.sum_all()?;
+        //
+        let edge2vtx = del_msh::polyloop::edge2vtx(vtx2xy.dims2()?.0);
+        let unorm_diff = del_candle::cubic_stylization::hoge(&vtx2xy, &edge2vtx)?;
+        //
         let polyloop_to_diffcoord = del_candle::polyloop2_to_diffcoord::Layer {};
         let magdiffc = vtx2xy.apply_op1(polyloop_to_diffcoord)?.sub(&vtx2diff_ini)?.sqr()?.sum_all()?;
-        // let magdiffc = vtx2xy.apply_op1(polyloop_to_diffcoord)?.sqr().unwrap().sum_all()?;
         dbg!(unorm_diff.to_vec0::<f32>()?);
-        //let loss = if iter < 100 { (magdiffc*2.0)? }
-        //else{ (unorm_diff+magdiffc*0.3)? };
         let loss = (unorm_diff + magdiffc*3.0)?;
         let grad = loss.backward()?;
         let dw_vtx2xyz = grad.get(&vtx2xy).unwrap();

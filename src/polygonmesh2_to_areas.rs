@@ -2,30 +2,26 @@ use std::ops::Deref;
 
 use candle_core::{CpuStorage, Layout, Shape, Tensor};
 
-#[derive(Clone, Copy)]
-struct Layer {}
+pub struct Layer {
+    pub elem2idx: Vec<usize>,
+    pub idx2vtx: Vec<usize>
+}
 
-impl candle_core::CustomOp1 for crate::polyloop2_to_area::Layer {
+impl candle_core::CustomOp1 for crate::polygonmesh2_to_areas::Layer {
     fn name(&self) -> &'static str {
-        "polyloop_to_edgevector"
+        "polyloop2_to_area"
     }
 
     #[allow(clippy::identity_op)]
     fn cpu_fwd(&self, storage: &CpuStorage, layout: &Layout)
                -> candle_core::Result<(CpuStorage, Shape)>
     {
-        let (num_vtx, num_dim) = layout.shape().dims2()?;
-        assert_eq!(num_dim, 2);
+        assert_eq!(layout.shape().dims2()?.1, 2);
         let vtx2xy = storage.as_slice::<f32>()?;
-        let mut area: f32 = 0.0f32;
-        for i_edge in 0..num_vtx {
-            let i0_vtx = i_edge;
-            let i1_vtx = (i_edge + 1) % num_vtx;
-            area += 0.5f32 * vtx2xy[i0_vtx * 2 + 0] * vtx2xy[i1_vtx * 2 + 1];
-            area -= 0.5f32 * vtx2xy[i0_vtx * 2 + 1] * vtx2xy[i1_vtx * 2 + 0];
-        }
-        let shape = candle_core::Shape::from(());
-        let storage = candle_core::WithDType::to_cpu_storage_owned(vec!(area));
+        let elem2area = del_msh::polygon_mesh::elem2area(
+            &self.elem2idx, &self.idx2vtx, vtx2xy);
+        let shape = candle_core::Shape::from(elem2area.len());
+        let storage = candle_core::WithDType::to_cpu_storage_owned(elem2area);
         Ok((storage, shape))
     }
 
@@ -50,13 +46,16 @@ impl candle_core::CustomOp1 for crate::polyloop2_to_area::Layer {
         };
         //
         let mut dw_vtx2xy = vec!(0f32; num_vtx * 2);
-        for i_edge in 0..num_vtx {
-            let i0_vtx = i_edge;
-            let i1_vtx = (i_edge + 1) % num_vtx;
-            dw_vtx2xy[i0_vtx * 2 + 0] += 0.5f32 * vtx2xy[i1_vtx * 2 + 1] * dw_area[0];
-            dw_vtx2xy[i1_vtx * 2 + 1] += 0.5f32 * vtx2xy[i0_vtx * 2 + 0] * dw_area[0];
-            dw_vtx2xy[i0_vtx * 2 + 1] -= 0.5f32 * vtx2xy[i1_vtx * 2 + 0] * dw_area[0];
-            dw_vtx2xy[i1_vtx * 2 + 0] -= 0.5f32 * vtx2xy[i0_vtx * 2 + 1] * dw_area[0];
+        for i_elem in 0..self.elem2idx.len() - 1 {
+            let num_vtx_in_elem = self.elem2idx[i_elem+1] - self.elem2idx[i_elem];
+            for i_edge in 0..num_vtx_in_elem {
+                let i0_vtx = self.idx2vtx[ self.elem2idx[i_elem] + i_edge];
+                let i1_vtx = self.idx2vtx[ self.elem2idx[i_elem] + (i_edge + 1) % num_vtx_in_elem ];
+                dw_vtx2xy[i0_vtx * 2 + 0] += 0.5f32 * vtx2xy[i1_vtx * 2 + 1] * dw_area[i_elem];
+                dw_vtx2xy[i1_vtx * 2 + 1] += 0.5f32 * vtx2xy[i0_vtx * 2 + 0] * dw_area[i_elem];
+                dw_vtx2xy[i0_vtx * 2 + 1] -= 0.5f32 * vtx2xy[i1_vtx * 2 + 0] * dw_area[i_elem];
+                dw_vtx2xy[i1_vtx * 2 + 0] -= 0.5f32 * vtx2xy[i0_vtx * 2 + 1] * dw_area[i_elem];
+            }
         }
         let dw_vtx2xy = candle_core::Tensor::from_vec(
             dw_vtx2xy,
@@ -76,10 +75,13 @@ fn test_backward() -> anyhow::Result<()> {
             candle_core::Shape::from((num_vtx, 2)),
             &candle_core::Device::Cpu).unwrap()
     };
-    let render = crate::polyloop2_to_area::Layer {};
+    let elem2idx = vec!(0, num_vtx);
+    let idx2vtx: Vec<usize> = (0..num_vtx).map(|v| v).collect();
+    let render = crate::polygonmesh2_to_areas::Layer {
+        elem2idx: elem2idx.clone(), idx2vtx: idx2vtx.clone()};
     let area0 = vtx2xy.apply_op1(render)?;
-    {  // check area is circle
-        let area0 = area0.to_vec0::<f32>()?;
+    {  // check the area is that of a circle
+        let area0 = area0.to_vec1::<f32>()?[0];
         assert!((area0 - std::f32::consts::PI).abs() < 0.01);
     }
     { // add perturbation
@@ -87,9 +89,11 @@ fn test_backward() -> anyhow::Result<()> {
             1f32, 1f32, (num_vtx, 2), &candle_core::Device::Cpu)?;
         vtx2xy.add(&rand0)?;
     }
+    let render = crate::polygonmesh2_to_areas::Layer {
+        elem2idx: elem2idx.clone(), idx2vtx: idx2vtx.clone()};
     let area0 = vtx2xy.apply_op1(render)?;
     let grad = area0.backward()?;
-    let area0 = area0.to_vec0::<f32>()?;
+    let area0 = area0.to_vec1::<f32>()?[0];
     let dw_vtx2xy = grad.get(&vtx2xy).unwrap();
     let dw_vtx2xy = dw_vtx2xy.flatten_all()?.to_vec1::<f32>()?;
     let eps = 1.0e-2f32;
@@ -99,8 +103,10 @@ fn test_backward() -> anyhow::Result<()> {
             vtx2xy1[i_vtx*2+i_dim] += eps;
             let vtx2xy1 = candle_core::Tensor::from_vec(
                 vtx2xy1, (num_vtx, 2), &candle_core::Device::Cpu)?;
+            let render = crate::polygonmesh2_to_areas::Layer {
+                elem2idx: elem2idx.clone(), idx2vtx: idx2vtx.clone()};
             let area1 = vtx2xy1.apply_op1(render)?;
-            let area1 = area1.to_vec0::<f32>()?;
+            let area1 = area1.to_vec1::<f32>()?[0];
             let da0 = (area1-area0)/eps;
             let da1 = dw_vtx2xy[i_vtx*2+i_dim];
             assert!((da0-da1).abs()<1.0e-4);
@@ -126,18 +132,21 @@ fn area_constraint() -> anyhow::Result<()> {
             candle_core::Shape::from((vtx2xy.ncols(), 2)),
             &candle_core::Device::Cpu).unwrap()
     };
+    let elem2idx = vec!(0, num_vtx);
+    let idx2vtx: Vec<usize> = (0..num_vtx).map(|v| v).collect();
     for iter in 0..200 {
-        let render = crate::polyloop2_to_area::Layer {};
+        let render = crate::polygonmesh2_to_areas::Layer {
+            elem2idx: elem2idx.clone(), idx2vtx: idx2vtx.clone()};
         let area = vtx2xy.apply_op1(render)?;
         dbg!(iter, area.to_vec0::<f32>()?);
         let area_sq = area.sqr()?;
         let grad = area_sq.backward()?;
         let dw_vtx2xyz = grad.get(&vtx2xy).unwrap();
         let _ = vtx2xy.set(&vtx2xy.as_tensor().sub(&(dw_vtx2xyz * 0.1)?)?);
-        if iter % 10 == 0 {
+        if iter % 50 == 0 {
             let vtx2xy: Vec<_> = vtx2xy.flatten_all()?.to_vec1::<f32>()?;
             let _ = del_msh::io_obj::save_vtx2xyz_as_polyloop(
-                format!("target/polyloop_{}.obj", iter),
+                format!("target/test_polyloop2area_reducing_area_{}.obj", iter),
                 &vtx2xy, 2);
         }
     }

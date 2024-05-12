@@ -1,9 +1,11 @@
 pub mod trimesh3_to_tri2nrm;
 pub mod render_meshtri2_vtxcolor;
 pub mod polyloop_to_edgevector;
-pub mod polyloop2_to_area;
+pub mod polygonmesh2_to_areas;
 pub mod polyloop2_to_diffcoord;
-pub mod site2_to_voronoi2;
+pub mod voronoi2;
+pub mod polygonmesh2_to_cogs;
+pub mod cubic_stylization;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right

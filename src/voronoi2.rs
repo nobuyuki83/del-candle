@@ -1,11 +1,12 @@
 use candle_core::{CpuStorage, Layout, Shape, Tensor};
 
+
 pub struct Layer {
     pub vtxl2xy: Vec<f32>,
     pub vtxv2info: Vec<[usize; 4]>,
 }
 
-impl candle_core::CustomOp1 for crate::site2_to_voronoi2::Layer {
+impl candle_core::CustomOp1 for crate::voronoi2::Layer {
     fn name(&self) -> &'static str {
         "site2_to_volonoi2"
     }
@@ -106,40 +107,81 @@ impl candle_core::CustomOp1 for crate::site2_to_voronoi2::Layer {
 }
 
 #[test]
-fn test_layer() -> anyhow::Result<()> {
+fn test_backward() -> anyhow::Result<()> {
     let vtxl2xy = vec!(
         0.0, 0.0,
         1.0, 0.0,
         1.0, 1.0,
         0.0, 1.0);
-    let site2xy = del_msh::sampling::poisson_disk_sampling_from_polyloop2(
+    let site2xy0 = del_msh::sampling::poisson_disk_sampling_from_polyloop2(
         &vtxl2xy, 0.15, 10);
-    let site2xy = del_msh::vtx2xyz::from_array_of_nalgebra(&site2xy);
-    let (site2vtxc2xy, site2vtxc2info)
-        = del_msh::voronoi2::voronoi_cells(&vtxl2xy, &site2xy);
-    let (site2idx, idx2vtxv, _vtxv2xy, vtxv2info)
-        = del_msh::voronoi2::indexing(&site2vtxc2xy, &site2vtxc2info);
-    let site2xy = {
+    let site2xy0 = {
         candle_core::Var::from_slice(
-            &site2xy,
-            candle_core::Shape::from((site2xy.len() / 2, 2)),
+            &site2xy0,
+            candle_core::Shape::from((site2xy0.len() / 2, 2)),
             &candle_core::Device::Cpu).unwrap()
     };
-    let site2_to_voronoi2 = crate::site2_to_voronoi2::Layer {
-        vtxl2xy,
-        vtxv2info,
-    };
-    let vtxv2xy = site2xy.apply_op1(site2_to_voronoi2)?;
+    let (vtxv2xy0, voronoi_info0) = crate::voronoi2::voronoi(&vtxl2xy, &site2xy0);
     {   // output to obj file
-        let mut vtx2xy = vtxv2xy.clone().flatten_all()?.to_vec1::<f32>()?;
-        let site2xy = site2xy.clone().flatten_all()?.to_vec1::<f32>()?;
+        let mut vtx2xy = vtxv2xy0.clone().flatten_all()?.to_vec1::<f32>()?;
+        let site2xy = site2xy0.clone().flatten_all()?.to_vec1::<f32>()?;
         vtx2xy.extend(site2xy);
         let edge2vtxv = del_msh::edge2vtx::from_polygon_mesh(
-            &site2idx, &idx2vtxv, vtx2xy.len() / 2);
+            &voronoi_info0.site2idx, &voronoi_info0.idx2vtxv, vtx2xy.len() / 2);
         let _ = del_msh::io_obj::save_edge2vtx_vtx2xyz(
             "target/voronoi0.obj", &edge2vtxv, &vtx2xy, 2);
     }
-    let loss = vtxv2xy.flatten_all()?.sum_all()?;
-    let grad = loss.backward()?;
+    let vtxv2xygoal = candle_core::Tensor::randn(
+        1f32, 1f32, vtxv2xy0.shape(), &candle_core::Device::Cpu)?;
+    let loss0 = vtxv2xy0.mul(&vtxv2xygoal)?.sum_all()?;
+    let grad = loss0.backward()?;
+    let loss0 = loss0.to_vec0::<f32>()?;
+    let dw_site2xy = grad.get(&site2xy0).unwrap();
+    let dw_site2xy = dw_site2xy.flatten_all()?.to_vec1::<f32>()?;
+    let eps = 1.0e-4;
+    let num_site = site2xy0.dims2()?.0;
+    for i_site in 0..num_site {
+        for i_dim in 0..2 {
+            let mut site2xy1 = site2xy0.clone().flatten_all()?.to_vec1::<f32>()?;
+            site2xy1[i_site * 2 + i_dim] += eps;
+            let site2xy1 = candle_core::Tensor::from_vec(
+                site2xy1, site2xy0.shape(), &candle_core::Device::Cpu)?;
+            let site2_to_voronoi2 = crate::voronoi2::Layer {
+                vtxl2xy: vtxl2xy.clone(),
+                vtxv2info: voronoi_info0.vtxv2info.clone(),
+            };
+            let vtxv2xy1 = site2xy1.apply_op1(site2_to_voronoi2)?;
+            let loss1 = vtxv2xy1.mul(&vtxv2xygoal)?.sum_all()?;
+            let loss1 = loss1.to_vec0::<f32>()?;
+            let val0 = (loss1-loss0)/eps;
+            let val1 = dw_site2xy[i_site*2+i_dim];
+            assert!( (val0-val1).abs() < 5.0e-2, "diff {} {}", val0, val1 );
+        }
+    }
     Ok(())
+}
+
+pub struct VoronoiInfo {
+    pub site2idx: Vec<usize>,
+    pub idx2vtxv: Vec<usize>,
+    pub vtxv2info: Vec<[usize;4]>
+}
+
+pub fn voronoi(
+    vtxl2xy: &[f32],
+    site2xy: &candle_core::Tensor) -> (Tensor, VoronoiInfo)
+{
+    let (site2vtxc2xy, site2vtxc2info)
+        = del_msh::voronoi2::voronoi_cells(
+        &vtxl2xy,
+        &site2xy.flatten_all().unwrap().to_vec1::<f32>().unwrap());
+    let (site2idx, idx2vtxv, _vtxv2xy, vtxv2info)
+        = del_msh::voronoi2::indexing(&site2vtxc2xy, &site2vtxc2info);
+    let site2_to_voronoi2 = crate::voronoi2::Layer {
+        vtxl2xy: Vec::<f32>::from(vtxl2xy),
+        vtxv2info: vtxv2info.clone(),
+    };
+    let vtxv2xy = site2xy.apply_op1(site2_to_voronoi2).unwrap();
+    let vi = VoronoiInfo{site2idx, idx2vtxv, vtxv2info};
+    (vtxv2xy, vi)
 }

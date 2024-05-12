@@ -80,6 +80,50 @@ impl candle_core::CustomOp1 for Layer {
     }
 }
 
+
+#[test]
+fn test_backward() -> anyhow::Result<()> {
+    let (tri2vtx, vtx2xyz)
+        = del_msh::trimesh3_primitive::torus_yup::<i64, f32>(
+        0.5, 0.2, 6, 4);
+    let num_vtx = vtx2xyz.len() / 3;
+    let vtx2xyz0 = candle_core::Var::from_vec(
+        vtx2xyz.clone(),
+        candle_core::Shape::from((vtx2xyz.len() / 3, 3)),
+        &candle_core::Device::Cpu).unwrap();
+    let tri2vtx = candle_core::Tensor::from_vec(
+        tri2vtx.clone(),
+        (tri2vtx.len() / 3, 3),
+        &candle_core::Device::Cpu).unwrap();
+    let num_tri = tri2vtx.shape().dims2()?.0;
+    let tri2goal = candle_core::Tensor::randn(
+        1f32, 1f32, (num_tri, 3), &candle_core::Device::Cpu)?;
+    let ln = Layer { tri2vtx: tri2vtx.clone() }; // cheap
+    let tri2normal0 = vtx2xyz0.apply_op1(ln)?;
+    let loss0 = tri2normal0.mul(&tri2goal)?.sum_all()?;
+    let grad = loss0.backward()?;
+    let loss0 = loss0.to_vec0::<f32>()?;
+    let dw_vtx2xyz = grad.get(&vtx2xyz0).unwrap();
+    let dw_vtx2xyz = dw_vtx2xyz.flatten_all()?.to_vec1::<f32>()?;
+    let eps = 1.0e-2;
+    for i_vtx in 0..num_vtx {
+        for i_dim in 0..3 {
+            let mut vtx2xyz1 = vtx2xyz0.clone().flatten_all()?.to_vec1::<f32>()?;
+            vtx2xyz1[i_vtx*3+i_dim] += eps;
+            let vtx2xyz1 = candle_core::Tensor::from_vec(
+                vtx2xyz1, (num_vtx, 3), &candle_core::Device::Cpu)?;
+            let ln = Layer { tri2vtx: tri2vtx.clone() }; // cheap
+            let tri2normal1 = vtx2xyz1.apply_op1(ln)?;
+            let loss1 = tri2normal1.mul(&tri2goal)?.sum_all()?;
+            let loss1 = loss1.to_vec0::<f32>()?;
+            let val0 = dw_vtx2xyz[i_vtx*3+i_dim];
+            let val1 = (loss1 - loss0)/eps;
+            assert!( (val0-val1).abs() < 1.0e-4, "should be the same: {} {}", val0, val1);
+        }
+    }
+    Ok(())
+}
+
 #[test]
 fn minimize_surface_area() -> anyhow::Result<()> {
     const MAJOR_RADIUS: f32 = 0.5;
