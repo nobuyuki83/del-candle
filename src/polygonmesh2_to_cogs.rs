@@ -44,7 +44,7 @@ impl candle_core::CustomOp1 for crate::polygonmesh2_to_cogs::Layer {
         let mut dw_vtx2xy = vec!(0f32; num_vtx * 2);
         for i_elem in 0..self.elem2idx.len() - 1 {
             let num_vtx_in_elem = self.elem2idx[i_elem+1] - self.elem2idx[i_elem];
-            let ratio = 1.0 / num_vtx_in_elem as f32;
+            let ratio = if  num_vtx_in_elem == 0 { 0.0 } else { 1.0 / num_vtx_in_elem as f32 };
             for i_edge in 0..num_vtx_in_elem {
                 let i0_vtx = self.idx2vtx[ self.elem2idx[i_elem] + i_edge];
                 dw_vtx2xy[i0_vtx * 2 + 0] += ratio * dw_elem2cog[i_elem * 2 + 0];

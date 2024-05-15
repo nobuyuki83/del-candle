@@ -1,6 +1,6 @@
 pub mod trimesh3_to_tri2nrm;
 pub mod render_meshtri2_vtxcolor;
-pub mod polyloop_to_edgevector;
+pub mod vtx2xyz_to_edgevector;
 pub mod polygonmesh2_to_areas;
 pub mod polyloop2_to_diffcoord;
 pub mod voronoi2;

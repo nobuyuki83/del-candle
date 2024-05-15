@@ -164,17 +164,20 @@ fn test_backward() -> anyhow::Result<()> {
 pub struct VoronoiInfo {
     pub site2idx: Vec<usize>,
     pub idx2vtxv: Vec<usize>,
+    pub idx2elem: Vec<usize>,
     pub vtxv2info: Vec<[usize;4]>
 }
 
 pub fn voronoi(
     vtxl2xy: &[f32],
-    site2xy: &candle_core::Tensor) -> (Tensor, VoronoiInfo)
+    site2xy: &candle_core::Tensor,
+    site2flag: &[usize]) -> (Tensor, VoronoiInfo)
 {
     let (site2vtxc2xy, site2vtxc2info)
         = del_msh::voronoi2::voronoi_cells(
         &vtxl2xy,
-        &site2xy.flatten_all().unwrap().to_vec1::<f32>().unwrap());
+        &site2xy.flatten_all().unwrap().to_vec1::<f32>().unwrap(),
+        &site2flag);
     let (site2idx, idx2vtxv, _vtxv2xy, vtxv2info)
         = del_msh::voronoi2::indexing(&site2vtxc2xy, &site2vtxc2info);
     let site2_to_voronoi2 = crate::voronoi2::Layer {
@@ -182,6 +185,10 @@ pub fn voronoi(
         vtxv2info: vtxv2info.clone(),
     };
     let vtxv2xy = site2xy.apply_op1(site2_to_voronoi2).unwrap();
-    let vi = VoronoiInfo{site2idx, idx2vtxv, vtxv2info};
+    let idx2elem = del_msh::elem2elem::from_polygon_mesh(
+        &site2idx,
+        &idx2vtxv,
+        vtxv2xy.dims2().unwrap().0);
+    let vi = VoronoiInfo{site2idx, idx2vtxv, vtxv2info, idx2elem};
     (vtxv2xy, vi)
 }

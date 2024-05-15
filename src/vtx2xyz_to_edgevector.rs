@@ -5,9 +5,9 @@ pub struct Layer {
     pub edge2vtx: Vec<usize>
 }
 
-impl candle_core::CustomOp1 for crate::polyloop_to_edgevector::Layer {
+impl candle_core::CustomOp1 for crate::vtx2xyz_to_edgevector::Layer {
     fn name(&self) -> &'static str {
-        "polyloop_to_edgevector"
+        "vtx2xyz_to_edgevector"
     }
 
     fn cpu_fwd(&self, storage: &CpuStorage, layout: &Layout)
@@ -34,16 +34,19 @@ impl candle_core::CustomOp1 for crate::polyloop_to_edgevector::Layer {
     /// This function takes as argument the argument `arg` used in the forward pass, the result
     /// produced by the forward operation `res` and the gradient of the result `grad_res`.
     /// The function should return the gradient of the argument.
-    fn bwd(&self, _vtx2xy: &Tensor, _edge2xy: &Tensor, dw_edge2xy: &Tensor)
+    fn bwd(&self, vtx2xy: &Tensor, _edge2xy: &Tensor, dw_edge2xy: &Tensor)
         -> candle_core::Result<Option<Tensor>> {
-        let (_num_vtx, num_dim) = dw_edge2xy.shape().dims2()?;
-        let num_edge = self.edge2vtx.len() / 2;
+        let (num_edge, num_dim) = dw_edge2xy.shape().dims2()?;
+        let (num_vtx, num_dim0) = vtx2xy.shape().dims2()?;
+        assert_eq!(num_dim, num_dim0);
+        assert_eq!(num_edge, self.edge2vtx.len()/2);
+        // dbg!(num_edge, num_vtx);
         let dw_edge2xy = dw_edge2xy.storage_and_layout().0;
         let dw_edge2xy = match dw_edge2xy.deref() {
             candle_core::Storage::Cpu(cpu_tri2vtx) => { cpu_tri2vtx.as_slice::<f32>()? }
             _ => panic!()
         };
-        let mut dw_vtx2xy = vec!(0f32; num_edge * num_dim);
+        let mut dw_vtx2xy = vec!(0f32; num_vtx * num_dim);
         for i_edge in 0..num_edge {
             let i0_vtx = self.edge2vtx[i_edge*2+0];
             let i1_vtx = self.edge2vtx[i_edge*2+1];
@@ -54,7 +57,7 @@ impl candle_core::CustomOp1 for crate::polyloop_to_edgevector::Layer {
         }
         let dw_vtx2xy = candle_core::Tensor::from_vec(
             dw_vtx2xy,
-            candle_core::Shape::from((num_edge, num_dim)),
+            candle_core::Shape::from((num_vtx, num_dim)),
             &candle_core::Device::Cpu)?;
         Ok(Some(dw_vtx2xy))
 
@@ -76,7 +79,7 @@ fn edge_length_constraint() ->  anyhow::Result<()> {
             1f32, 1f32, vtx2xy.shape(), &candle_core::Device::Cpu)? )?;
     let edge2vtx = del_msh::polyloop::edge2vtx(num_vtx);
     for iter in 0..100 {
-        let render = crate::polyloop_to_edgevector::Layer {edge2vtx: edge2vtx.clone()};
+        let render = crate::vtx2xyz_to_edgevector::Layer {edge2vtx: edge2vtx.clone()};
         let edge2xy = vtx2xy.apply_op1(render)?;
         assert_eq!(edge2xy.shape(), vtx2xy.shape());
         {  // assert sum of all vectors are zero
