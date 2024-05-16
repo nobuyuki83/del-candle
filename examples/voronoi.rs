@@ -124,12 +124,11 @@ fn remove_site_too_close(
             if j_room == usize::MAX { continue; }
             if i_room != j_room { continue; }
             let p_j = del_geo::vec2::to_na(&site2xy, j_site);
-            if (p_i-p_j).norm() < 0.05 {
+            if (p_i-p_j).norm() < 0.02 {
                 site2room[j_site] = usize::MAX;
             }
         }
     }
-
 }
 
 
@@ -147,38 +146,56 @@ fn main() -> anyhow::Result<()> {
         1.0, 0.0,
         1.0, 1.0,
         0.0, 1.0);
-    /*
     let site2xy = del_msh::sampling::poisson_disk_sampling_from_polyloop2(
-        &vtxl2xy, 0.15, 10);
-     */
-    let site2xy: Vec<f32> = vec!(
-        0.11, 0.1,
-        0.8, 0.13,
-        0.31, 0.5,
-        0.5, 0.52,
-        0.8, 0.6,
-        0.8, 0.83,
-        0.1, 0.81
-    );
+            &vtxl2xy, 0.1, 30);
+    let room2area_trg = vec!(0.5f32, 0.5f32);
+    let mut site2room = {
+        let num_site = site2xy.len() / 2;
+        let num_room = room2area_trg.len();
+        let mut site2room: Vec<usize> = vec!(0; num_site);
+        for iter in 0..100 {
+            for i_room in 0..num_room {
+                if iter*num_room+i_room >= site2room.len() { break; }
+                site2room[iter*num_room+i_room] = i_room;
+            }
+            if (iter+1)*num_room >= site2room.len() { break; }
+        }
+        site2room
+    };
+    dbg!(&site2room);
+    // ---------------------
+    // candle from here
     let site2xy = candle_core::Var::from_slice(
         &site2xy,
         candle_core::Shape::from((site2xy.len() / 2, 2)), &candle_core::Device::Cpu).unwrap();
-    //
-    let mut site2room: Vec<usize> = vec!(1, 1, 0, 0, 0, 0, 0);
     assert_eq!(site2room.len(), site2xy.dims2()?.0);
+    //
     let room2area_trg = candle_core::Tensor::from_vec(
-        vec!(0.5f32, 0.5f32),
+        room2area_trg,
         candle_core::Shape::from((2, 1)),
         &candle_core::Device::Cpu).unwrap();
+    let adamw_params = candle_nn::ParamsAdamW {
+        lr: 0.05,
+        ..Default::default()
+    };
+    use candle_nn::Optimizer;
+    let mut optimizer =
+        candle_nn::AdamW::new(vec![site2xy.clone()], adamw_params)?;
     for _iter in 0..400 {
         let (vtxv2xy, voronoi_info) = del_candle::voronoi2::voronoi(
             &vtxl2xy, &site2xy, &site2room);
         let edge2vtxv_wall = edge2vtvx_wall(&voronoi_info, &site2room);
-        let loss_cubic = del_candle::cubic_stylization::from_edge2vtx(&vtxv2xy, &edge2vtxv_wall)?;
+        // let loss_cubic = del_candle::cubic_stylization::from_edge2vtx(&vtxv2xy, &edge2vtxv_wall)?;
         let loss_area = crate::room2area(
             &site2room,
             &voronoi_info.site2idx, &voronoi_info.idx2vtxv, &vtxv2xy)?
             .sub(&room2area_trg)?.sqr()?.sum_all()?;
+        let loss_walllen = {
+            let vtx2xyz_to_edgevector = del_candle::vtx2xyz_to_edgevector::Layer {
+                edge2vtx: Vec::<usize>::from(edge2vtxv_wall.clone()) };
+            let edge2xy = vtxv2xy.apply_op1(vtx2xyz_to_edgevector)?;
+            edge2xy.abs()?.sum_all()?
+        };
         //
         /*
         let polygonmesh2_to_cogs = del_candle::polygonmesh2_to_cogs::Layer {
@@ -190,14 +207,16 @@ fn main() -> anyhow::Result<()> {
         //
         let loss = (loss_area + loss_lloyd.affine(0.5, 0.0)? + loss_cubic)?;
          */
-        let loss = (loss_cubic + loss_area)?;
+        // let loss = (loss_cubic + loss_area)?;
+        // let loss = (loss_cubic + loss_area + loss_walllen.affine(0.2, 0.0)?)?;
+        let loss = (loss_area + loss_walllen.affine(0.1, 0.0)?)?;
         dbg!(loss.to_vec0::<f32>()?);
-        // let loss = (loss_lloyd + loss_cubic)?;
         let grad = loss.backward().unwrap();
         let dw_site2xy = grad.get(&site2xy).unwrap();
-        let _ = site2xy.set(&site2xy.as_tensor().sub(&(dw_site2xy * 0.05)?)?);
+        // let _ = site2xy.set(&site2xy.as_tensor().sub(&(dw_site2xy * 0.05)?)?);
+        optimizer.backward_step(&loss)?;
         // dbg!(&site2room);
-        // remove_site_too_close(&mut site2room, &site2xy);
+        remove_site_too_close(&mut site2room, &site2xy);
         //
         canvas.clear(0);
         my_paint(&mut canvas, &transform_to_scr,

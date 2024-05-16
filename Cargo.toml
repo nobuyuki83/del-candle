@@ -9,8 +9,9 @@ edition = "2021"
 png = "0.17.13"
 nalgebra = "0.32.5"
 # candle-core = { git = "https://github.com/huggingface/candle.git", features=["cuda"]}
-candle-core = { git = "https://github.com/huggingface/candle.git"}
-anyhow = "1.0.82"
+candle-core = { git = "https://github.com/huggingface/candle.git" }
+candle-nn = { git = "https://github.com/huggingface/candle.git" }
+anyhow = "1.0.83"
 rand = "0.8.5"
 image = "0.25.1"
 #
