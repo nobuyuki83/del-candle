@@ -10,6 +10,7 @@ impl candle_core::CustomOp1 for crate::vtx2xyz_to_edgevector::Layer {
         "vtx2xyz_to_edgevector"
     }
 
+    #[allow(clippy::identity_op)]
     fn cpu_fwd(&self, storage: &CpuStorage, layout: &Layout)
                -> candle_core::Result<(CpuStorage, Shape)>
     {
@@ -34,6 +35,7 @@ impl candle_core::CustomOp1 for crate::vtx2xyz_to_edgevector::Layer {
     /// This function takes as argument the argument `arg` used in the forward pass, the result
     /// produced by the forward operation `res` and the gradient of the result `grad_res`.
     /// The function should return the gradient of the argument.
+    #[allow(clippy::identity_op)]
     fn bwd(&self, vtx2xy: &Tensor, _edge2xy: &Tensor, dw_edge2xy: &Tensor)
         -> candle_core::Result<Option<Tensor>> {
         let (num_edge, num_dim) = dw_edge2xy.shape().dims2()?;

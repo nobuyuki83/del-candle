@@ -44,8 +44,17 @@ fn main() -> anyhow::Result<()> {
         1.0, 0.0,
         1.0, 1.0,
         0.0, 1.0);
+    let vtxl2xy = vec!(
+        0.0, 0.0,
+        1.0, 0.0,
+        1.0, 0.2,
+        0.1, 0.2,
+        0.2, 0.5,
+        1.0, 0.5,
+        1.0, 1.0,
+        0.0, 1.0);
     let site2xy = del_msh::sampling::poisson_disk_sampling_from_polyloop2(
-        &vtxl2xy, 0.03, 50);
+        &vtxl2xy, 0.1, 50);
     // dbg!(&site2room);
     // del_canvas from here
     let mut canvas = {
@@ -72,7 +81,7 @@ fn main() -> anyhow::Result<()> {
         candle_nn::AdamW::new(vec![site2xy.clone()], adamw_params)?;
     for _iter in 0..400 {
         let (vtxv2xy, voronoi_info) = del_candle::voronoi2::voronoi(
-            &vtxl2xy, &site2xy, &vec!(0;site2xy.dims2()?.0));
+            &vtxl2xy, &site2xy, |_i_site| true );
         let polygonmesh2_to_cogs = del_candle::polygonmesh2_to_cogs::Layer {
             elem2idx: voronoi_info.site2idx.clone(),
             idx2vtx: voronoi_info.idx2vtxv.clone(),

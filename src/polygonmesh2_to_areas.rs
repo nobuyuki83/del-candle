@@ -28,7 +28,7 @@ impl candle_core::CustomOp1 for crate::polygonmesh2_to_areas::Layer {
     /// This function takes as argument the argument `arg` used in the forward pass, the result
     /// produced by the forward operation `res` and the gradient of the result `grad_res`.
     /// The function should return the gradient of the argument.
-    #[allow(clippy::identity_op)]
+    #[allow(clippy::identity_op, clippy::needless_range_loop)]
     fn bwd(&self, vtx2xy: &Tensor, _area: &Tensor, dw_area: &Tensor)
            -> candle_core::Result<Option<Tensor>> {
         let dw_area = dw_area.storage_and_layout().0;

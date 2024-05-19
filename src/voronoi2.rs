@@ -11,6 +11,7 @@ impl candle_core::CustomOp1 for crate::voronoi2::Layer {
         "site2_to_volonoi2"
     }
 
+    #[allow(clippy::identity_op)]
     fn cpu_fwd(&self, storage: &CpuStorage, layout: &Layout)
                -> candle_core::Result<(CpuStorage, Shape)>
     {
@@ -34,6 +35,7 @@ impl candle_core::CustomOp1 for crate::voronoi2::Layer {
     /// This function takes as argument the argument `arg` used in the forward pass, the result
     /// produced by the forward operation `res` and the gradient of the result `grad_res`.
     /// The function should return the gradient of the argument.
+    #[allow(clippy::identity_op)]
     fn bwd(&self, site2xy: &Tensor, _vtxv2xy: &Tensor, dw_vtxv2xy: &Tensor)
            -> candle_core::Result<Option<Tensor>> {
         let (num_site, two) = site2xy.shape().dims2()?;
@@ -164,31 +166,31 @@ fn test_backward() -> anyhow::Result<()> {
 pub struct VoronoiInfo {
     pub site2idx: Vec<usize>,
     pub idx2vtxv: Vec<usize>,
-    pub idx2elem: Vec<usize>,
+    pub idx2site: Vec<usize>,
     pub vtxv2info: Vec<[usize;4]>
 }
 
-pub fn voronoi(
+pub fn voronoi<F>(
     vtxl2xy: &[f32],
     site2xy: &candle_core::Tensor,
-    site2flag: &[usize]) -> (Tensor, VoronoiInfo)
+    site2isalive: F) -> (Tensor, VoronoiInfo)
+where F: Fn(usize) -> bool
 {
-    let (site2vtxc2xy, site2vtxc2info)
-        = del_msh::voronoi2::voronoi_cells(
-        &vtxl2xy,
+    let site2cell = del_msh::voronoi2::voronoi_cells(
+        vtxl2xy,
         &site2xy.flatten_all().unwrap().to_vec1::<f32>().unwrap(),
-        &site2flag);
+        &site2isalive);
     let (site2idx, idx2vtxv, _vtxv2xy, vtxv2info)
-        = del_msh::voronoi2::indexing(&site2vtxc2xy, &site2vtxc2info);
+        = del_msh::voronoi2::indexing(&site2cell);
     let site2_to_voronoi2 = crate::voronoi2::Layer {
         vtxl2xy: Vec::<f32>::from(vtxl2xy),
         vtxv2info: vtxv2info.clone(),
     };
     let vtxv2xy = site2xy.apply_op1(site2_to_voronoi2).unwrap();
-    let idx2elem = del_msh::elem2elem::from_polygon_mesh(
+    let idx2site = del_msh::elem2elem::from_polygon_mesh(
         &site2idx,
         &idx2vtxv,
         vtxv2xy.dims2().unwrap().0);
-    let vi = VoronoiInfo{site2idx, idx2vtxv, vtxv2info, idx2elem};
+    let vi = VoronoiInfo{site2idx, idx2vtxv, vtxv2info, idx2site };
     (vtxv2xy, vi)
 }
