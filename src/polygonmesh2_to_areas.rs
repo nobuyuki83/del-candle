@@ -138,7 +138,7 @@ fn area_constraint() -> anyhow::Result<()> {
         let render = crate::polygonmesh2_to_areas::Layer {
             elem2idx: elem2idx.clone(), idx2vtx: idx2vtx.clone()};
         let area = vtx2xy.apply_op1(render)?;
-        dbg!(iter, area.to_vec0::<f32>()?);
+        dbg!(iter, area.to_vec1::<f32>()?);
         let area_sq = area.sqr()?;
         let grad = area_sq.backward()?;
         let dw_vtx2xyz = grad.get(&vtx2xy).unwrap();

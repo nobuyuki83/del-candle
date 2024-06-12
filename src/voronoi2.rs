@@ -115,15 +115,16 @@ fn test_backward() -> anyhow::Result<()> {
         1.0, 0.0,
         1.0, 1.0,
         0.0, 1.0);
+    let mut reng = rand::thread_rng();
     let site2xy0 = del_msh::sampling::poisson_disk_sampling_from_polyloop2(
-        &vtxl2xy, 0.15, 10);
+        &vtxl2xy, 0.15, 10, &mut reng);
     let site2xy0 = {
         candle_core::Var::from_slice(
             &site2xy0,
             candle_core::Shape::from((site2xy0.len() / 2, 2)),
             &candle_core::Device::Cpu).unwrap()
     };
-    let (vtxv2xy0, voronoi_info0) = crate::voronoi2::voronoi(&vtxl2xy, &site2xy0);
+    let (vtxv2xy0, voronoi_info0) = crate::voronoi2::voronoi(&vtxl2xy, &site2xy0, |_| true );
     {   // output to obj file
         let mut vtx2xy = vtxv2xy0.clone().flatten_all()?.to_vec1::<f32>()?;
         let site2xy = site2xy0.clone().flatten_all()?.to_vec1::<f32>()?;
