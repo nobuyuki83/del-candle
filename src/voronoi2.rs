@@ -163,6 +163,7 @@ fn test_backward() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[derive(Default)]
 pub struct VoronoiInfo {
     pub site2idx: Vec<usize>,
     pub idx2vtxv: Vec<usize>,
@@ -193,4 +194,18 @@ where F: Fn(usize) -> bool
         vtxv2xy.dims2().unwrap().0);
     let vi = VoronoiInfo{site2idx, idx2vtxv, vtxv2info, idx2site };
     (vtxv2xy, vi)
+}
+
+pub fn loss_lloyd(
+    elem2idx: &[usize],
+    idx2vtx: &[usize],
+    site2xy: &candle_core::Tensor,
+    vtxv2xy: &candle_core::Tensor) -> candle_core::Result<candle_core::Tensor>
+{
+    let polygonmesh2_to_cogs = crate::polygonmesh2_to_cogs::Layer {
+        elem2idx: Vec::from(elem2idx),
+        idx2vtx: Vec::from(idx2vtx)
+    };
+    let site2cogs = vtxv2xy.apply_op1(polygonmesh2_to_cogs)?;
+    site2xy.sub(&site2cogs)?.sqr().unwrap().sum_all()
 }

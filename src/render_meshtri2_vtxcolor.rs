@@ -33,7 +33,7 @@ impl candle_core::CustomOp1 for Layer {
             _ => panic!()
         };
         let mut img = vec!(0f32; self.img_shape.0 * self.img_shape.1);
-        del_canvas::trimsh2_vtxcolor(
+        del_canvas::raycast_trimesh2::trimsh2_vtxcolor(
             self.img_shape.0, self.img_shape.1, &mut img,
             tri2vtx, vtx2xy, vtx2color, &self.transform);
         let shape = candle_core::Shape::from(
