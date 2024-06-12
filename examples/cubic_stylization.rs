@@ -1,6 +1,8 @@
-use del_msh::io_svg::{polybezier2polyloop, svg_loops_from_outline_path, svg_outline_path_from_shape};
+use del_msh::io_svg::{
+    polybezier2polyloop, svg_loops_from_outline_path, svg_outline_path_from_shape,
+};
 
-fn main() -> anyhow::Result<()>{
+fn main() -> anyhow::Result<()> {
     let vtx2xy = {
         let str0 = "M2792 12789 c-617 -83 -1115 -568 -1244 -1212 -32 -160 -32 -443 0 \
     -602 76 -382 282 -720 573 -938 l36 -27 -58 -172 c-90 -269 -174 -590 -216 \
@@ -30,43 +32,52 @@ fn main() -> anyhow::Result<()>{
         let strs = svg_outline_path_from_shape(str0);
         let loops = svg_loops_from_outline_path(&strs);
         assert_eq!(loops.len(), 1);
-        let vtx2xy = polybezier2polyloop(
-            &loops[0].0, &loops[0].1, loops[0].2, 10.0);
+        let vtx2xy = polybezier2polyloop(&loops[0].0, &loops[0].1, loops[0].2, 10.0);
         let vtx2xy = del_msh::vtx2xyz::from_array_of_nalgebra(&vtx2xy);
         del_msh::polyloop::resample::<_, 2>(&vtx2xy, 100)
     };
     let vtx2diff_ini = {
         let vtx2xy = candle_core::Tensor::from_slice(
             vtx2xy.as_slice(),
-            candle_core::Shape::from((vtx2xy.len()/2, 2)),
-            &candle_core::Device::Cpu).unwrap();
+            candle_core::Shape::from((vtx2xy.len() / 2, 2)),
+            &candle_core::Device::Cpu,
+        )
+        .unwrap();
         let polyloop_to_diffcoord = del_candle::polyloop2_to_diffcoord::Layer {};
         vtx2xy.apply_op1(polyloop_to_diffcoord)?
     };
     let vtx2xy = candle_core::Var::from_slice(
         vtx2xy.as_slice(),
-        candle_core::Shape::from((vtx2xy.len()/2, 2)),
-        &candle_core::Device::Cpu).unwrap();
+        candle_core::Shape::from((vtx2xy.len() / 2, 2)),
+        &candle_core::Device::Cpu,
+    )
+    .unwrap();
     for iter in 0..300 {
         //
         let edge2vtx = del_msh::polyloop::edge2vtx(vtx2xy.dims2()?.0);
         let unorm_diff = del_candle::cubic_stylization::from_edge2vtx(&vtx2xy, &edge2vtx)?;
         //
         let polyloop_to_diffcoord = del_candle::polyloop2_to_diffcoord::Layer {};
-        let magdiffc = vtx2xy.apply_op1(polyloop_to_diffcoord)?.sub(&vtx2diff_ini)?.sqr()?.sum_all()?;
+        let magdiffc = vtx2xy
+            .apply_op1(polyloop_to_diffcoord)?
+            .sub(&vtx2diff_ini)?
+            .sqr()?
+            .sum_all()?;
         dbg!(unorm_diff.to_vec0::<f32>()?);
-        let loss = (unorm_diff + magdiffc*3.0)?;
+        let loss = (unorm_diff + magdiffc * 3.0)?;
         let grad = loss.backward()?;
         let dw_vtx2xyz = grad.get(&vtx2xy).unwrap();
         let _ = vtx2xy.set(&vtx2xy.as_tensor().sub(&(dw_vtx2xyz * 0.05)?)?);
         if iter % 30 == 0 {
             let vtx2xy: Vec<_> = vtx2xy.flatten_all()?.to_vec1::<f32>()?;
-            let hoge = del_msh::polyloop::to_cylinder_trimeshes(
-                &vtx2xy, 2, 100.);
+            let hoge = del_msh::polyloop::to_cylinder_trimeshes(&vtx2xy, 2, 100.);
             // let _ = del_msh::io_obj::save_polyloop_(format!("target/polyloop_{}.obj", iter), &vtx2xy, 2);
             let _ = del_msh::io_obj::save_tri2vtx_vtx2xyz(
-                format!("target/polyloop_{}.obj", iter/30),
-                &hoge.0, &hoge.1, 3);
+                format!("target/polyloop_{}.obj", iter / 30),
+                &hoge.0,
+                &hoge.1,
+                3,
+            );
         }
     }
     Ok(())

@@ -6,9 +6,11 @@ fn rotate90(edge2xy: candle_core::Tensor) -> candle_core::Result<candle_core::Te
 
 pub fn from_edge2vtx(
     vtx2xy: &candle_core::Tensor,
-    edge2vtx: &[usize]) -> candle_core::Result<candle_core::Tensor>
-{
-    let vtx2xyz_to_edgevector = crate::vtx2xyz_to_edgevector::Layer { edge2vtx: Vec::<usize>::from(edge2vtx) };
+    edge2vtx: &[usize],
+) -> candle_core::Result<candle_core::Tensor> {
+    let vtx2xyz_to_edgevector = crate::vtx2xyz_to_edgevector::Layer {
+        edge2vtx: Vec::<usize>::from(edge2vtx),
+    };
     let edge2xy = vtx2xy.apply_op1(vtx2xyz_to_edgevector)?;
     let edge2nrm = rotate90(edge2xy)?;
     let mut edge2norm_trg = edge2nrm.flatten_all()?.to_vec1::<f32>()?;
@@ -36,7 +38,8 @@ pub fn from_edge2vtx(
     let edge2norm_trg = candle_core::Tensor::from_slice(
         edge2norm_trg.as_slice(),
         candle_core::Shape::from((edge2norm_trg.len() / 2, 2)),
-        &candle_core::Device::Cpu)?;
+        &candle_core::Device::Cpu,
+    )?;
     let unorm_diff = edge2nrm.sub(&edge2norm_trg)?.sqr()?.sum_all()?;
     Ok(unorm_diff)
 }

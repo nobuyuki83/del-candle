@@ -10,14 +10,14 @@ impl candle_core::CustomOp1 for Layer {
     fn cpu_fwd(
         &self,
         storage: &candle_core::CpuStorage,
-        layout: &candle_core::Layout)
-        -> candle_core::Result<(candle_core::CpuStorage, candle_core::Shape)> {
+        layout: &candle_core::Layout,
+    ) -> candle_core::Result<(candle_core::CpuStorage, candle_core::Shape)> {
         let (_num_vtx, _three) = layout.shape().dims2()?;
         let vtx2xyz = storage.as_slice::<f32>()?;
         use std::ops::Deref;
         let tri2vtx = self.tri2vtx.storage_and_layout().0;
         let tri2vtx = match tri2vtx.deref() {
-            candle_core::Storage::Cpu(cpu_tri2vtx) => { cpu_tri2vtx.as_slice::<i64>()? }
+            candle_core::Storage::Cpu(cpu_tri2vtx) => cpu_tri2vtx.as_slice::<i64>()?,
             _ => panic!(),
         };
         let tri2normal = del_msh::trimesh3::tri2normal(tri2vtx, vtx2xyz);
@@ -33,7 +33,8 @@ impl candle_core::CustomOp1 for Layer {
         &self,
         vtx2xyz: &candle_core::Tensor,
         tri2nrm: &candle_core::Tensor,
-        dw_tri2norm: &candle_core::Tensor) -> candle_core::Result<Option<candle_core::Tensor>> {
+        dw_tri2norm: &candle_core::Tensor,
+    ) -> candle_core::Result<Option<candle_core::Tensor>> {
         let (num_vtx, _three0) = vtx2xyz.shape().dims2()?;
         let (_num_tri, _three1) = tri2nrm.shape().dims2()?;
         assert!(vtx2xyz.layout().is_contiguous());
@@ -41,23 +42,28 @@ impl candle_core::CustomOp1 for Layer {
         use std::ops::Deref;
         let tri2vtx = self.tri2vtx.storage_and_layout().0;
         let tri2vtx = match tri2vtx.deref() {
-            candle_core::Storage::Cpu(cpu_tri2vtx) => { cpu_tri2vtx.as_slice::<i64>()? }
-            _ => panic!()
+            candle_core::Storage::Cpu(cpu_tri2vtx) => cpu_tri2vtx.as_slice::<i64>()?,
+            _ => panic!(),
         };
         let vtx2xyz = vtx2xyz.storage_and_layout().0;
         let vtx2xyz = match vtx2xyz.deref() {
-            candle_core::Storage::Cpu(cpu_vtx2xyz) => { cpu_vtx2xyz.as_slice::<f32>()? }
-            _ => panic!()
+            candle_core::Storage::Cpu(cpu_vtx2xyz) => cpu_vtx2xyz.as_slice::<f32>()?,
+            _ => panic!(),
         };
         let dw_tri2nrm = dw_tri2norm.storage_and_layout().0;
         let dw_tri2nrm = match dw_tri2nrm.deref() {
-            candle_core::Storage::Cpu(dw_tr2nrm) => { dw_tr2nrm.as_slice::<f32>()? }
-            _ => { panic!() }
+            candle_core::Storage::Cpu(dw_tr2nrm) => dw_tr2nrm.as_slice::<f32>()?,
+            _ => {
+                panic!()
+            }
         };
-        let mut dw_vtx2xyz = vec!(0f32; num_vtx * 3);
+        let mut dw_vtx2xyz = vec![0f32; num_vtx * 3];
         for (i_tri, node2vtx) in tri2vtx.chunks(3).enumerate() {
-            let (i0, i1, i2)
-                = (node2vtx[0] as usize, node2vtx[1] as usize, node2vtx[2] as usize);
+            let (i0, i1, i2) = (
+                node2vtx[0] as usize,
+                node2vtx[1] as usize,
+                node2vtx[2] as usize,
+            );
             let p0 = del_geo::vec3::to_na(vtx2xyz, i0);
             let p1 = del_geo::vec3::to_na(vtx2xyz, i1);
             let p2 = del_geo::vec3::to_na(vtx2xyz, i2);
@@ -75,30 +81,33 @@ impl candle_core::CustomOp1 for Layer {
         let dw_vtx2xyz = candle_core::Tensor::from_vec(
             dw_vtx2xyz,
             candle_core::Shape::from((num_vtx, 3)),
-            &candle_core::Device::Cpu)?;
+            &candle_core::Device::Cpu,
+        )?;
         Ok(Some(dw_vtx2xyz))
     }
 }
 
-
 #[test]
 fn test_backward() -> anyhow::Result<()> {
-    let (tri2vtx, vtx2xyz)
-        = del_msh::trimesh3_primitive::torus_yup::<i64, f32>(
-        0.5, 0.2, 6, 4);
+    let (tri2vtx, vtx2xyz) = del_msh::trimesh3_primitive::torus_yup::<i64, f32>(0.5, 0.2, 6, 4);
     let num_vtx = vtx2xyz.len() / 3;
     let vtx2xyz0 = candle_core::Var::from_vec(
         vtx2xyz.clone(),
         candle_core::Shape::from((vtx2xyz.len() / 3, 3)),
-        &candle_core::Device::Cpu).unwrap();
+        &candle_core::Device::Cpu,
+    )
+    .unwrap();
     let tri2vtx = candle_core::Tensor::from_vec(
         tri2vtx.clone(),
         (tri2vtx.len() / 3, 3),
-        &candle_core::Device::Cpu).unwrap();
+        &candle_core::Device::Cpu,
+    )
+    .unwrap();
     let num_tri = tri2vtx.shape().dims2()?.0;
-    let tri2goal = candle_core::Tensor::randn(
-        1f32, 1f32, (num_tri, 3), &candle_core::Device::Cpu)?;
-    let ln = Layer { tri2vtx: tri2vtx.clone() }; // cheap
+    let tri2goal = candle_core::Tensor::randn(1f32, 1f32, (num_tri, 3), &candle_core::Device::Cpu)?;
+    let ln = Layer {
+        tri2vtx: tri2vtx.clone(),
+    }; // cheap
     let tri2normal0 = vtx2xyz0.apply_op1(ln)?;
     let loss0 = tri2normal0.mul(&tri2goal)?.sum_all()?;
     let grad = loss0.backward()?;
@@ -109,16 +118,23 @@ fn test_backward() -> anyhow::Result<()> {
     for i_vtx in 0..num_vtx {
         for i_dim in 0..3 {
             let mut vtx2xyz1 = vtx2xyz0.clone().flatten_all()?.to_vec1::<f32>()?;
-            vtx2xyz1[i_vtx*3+i_dim] += eps;
-            let vtx2xyz1 = candle_core::Tensor::from_vec(
-                vtx2xyz1, (num_vtx, 3), &candle_core::Device::Cpu)?;
-            let ln = Layer { tri2vtx: tri2vtx.clone() }; // cheap
+            vtx2xyz1[i_vtx * 3 + i_dim] += eps;
+            let vtx2xyz1 =
+                candle_core::Tensor::from_vec(vtx2xyz1, (num_vtx, 3), &candle_core::Device::Cpu)?;
+            let ln = Layer {
+                tri2vtx: tri2vtx.clone(),
+            }; // cheap
             let tri2normal1 = vtx2xyz1.apply_op1(ln)?;
             let loss1 = tri2normal1.mul(&tri2goal)?.sum_all()?;
             let loss1 = loss1.to_vec0::<f32>()?;
-            let val0 = dw_vtx2xyz[i_vtx*3+i_dim];
-            let val1 = (loss1 - loss0)/eps;
-            assert!( (val0-val1).abs() < 1.0e-4, "should be the same: {} {}", val0, val1);
+            let val0 = dw_vtx2xyz[i_vtx * 3 + i_dim];
+            let val1 = (loss1 - loss0) / eps;
+            assert!(
+                (val0 - val1).abs() < 1.0e-4,
+                "should be the same: {} {}",
+                val0,
+                val1
+            );
         }
     }
     Ok(())
@@ -128,31 +144,38 @@ fn test_backward() -> anyhow::Result<()> {
 fn minimize_surface_area() -> anyhow::Result<()> {
     const MAJOR_RADIUS: f32 = 0.5;
     const MINOR_RADIUS: f32 = 0.2;
-    let (tri2vtx, vtx2xyz)
-        = del_msh::trimesh3_primitive::torus_yup::<i64, f32>(
-        MAJOR_RADIUS, MINOR_RADIUS, 16, 16);
-    dbg!("vtx_size", vtx2xyz.len()/3);
+    let (tri2vtx, vtx2xyz) =
+        del_msh::trimesh3_primitive::torus_yup::<i64, f32>(MAJOR_RADIUS, MINOR_RADIUS, 16, 16);
+    dbg!("vtx_size", vtx2xyz.len() / 3);
     let vtx2xyz = candle_core::Var::from_vec(
         vtx2xyz.clone(),
         candle_core::Shape::from((vtx2xyz.len() / 3, 3)),
-        &candle_core::Device::Cpu).unwrap();
+        &candle_core::Device::Cpu,
+    )
+    .unwrap();
     let tnsr_tri2vtx = candle_core::Tensor::from_vec(
         tri2vtx.clone(),
         (tri2vtx.len() / 3, 3),
-        &candle_core::Device::Cpu).unwrap();
+        &candle_core::Device::Cpu,
+    )
+    .unwrap();
     let mut prev_area = 0_f32;
     for itr in 0..100 {
-        let ln = Layer { tri2vtx: tnsr_tri2vtx.clone() }; // cheap
+        let ln = Layer {
+            tri2vtx: tnsr_tri2vtx.clone(),
+        }; // cheap
         let tri2normal = vtx2xyz.apply_op1(ln)?;
-        let area = (tri2normal.sqr()?.contiguous()?
-            .sum_keepdim(1)?.sqrt()? * 0.5)?
-            .sum_all()?;
+        let area = (tri2normal.sqr()?.contiguous()?.sum_keepdim(1)?.sqrt()? * 0.5)?.sum_all()?;
         {
             let cur_area = area.to_vec0::<f32>().unwrap();
             // dbg!(cur_area, itr, prev_area * 0.9995);
             if itr == 0 {
-                let smooth_area = MINOR_RADIUS * std::f32::consts::PI * 2.0
-                    * MAJOR_RADIUS * std::f32::consts::PI * 2.0;
+                let smooth_area = MINOR_RADIUS
+                    * std::f32::consts::PI
+                    * 2.0
+                    * MAJOR_RADIUS
+                    * std::f32::consts::PI
+                    * 2.0;
                 assert!((smooth_area - cur_area).abs() < 0.09);
             } else {
                 assert!(cur_area < prev_area * 0.9997);
