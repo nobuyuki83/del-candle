@@ -204,18 +204,18 @@ where
         &site2xy.flatten_all().unwrap().to_vec1::<f32>().unwrap(),
         &site2isalive,
     );
-    let (site2idx, idx2vtxv, _vtxv2xy, vtxv2info) = del_msh::voronoi2::indexing(&site2cell);
+    let voronoi_mesh = del_msh::voronoi2::indexing(&site2cell);
     let site2_to_voronoi2 = crate::voronoi2::Layer {
         vtxl2xy: Vec::<f32>::from(vtxl2xy),
-        vtxv2info: vtxv2info.clone(),
+        vtxv2info: voronoi_mesh.vtxv2info.clone(),
     };
     let vtxv2xy = site2xy.apply_op1(site2_to_voronoi2).unwrap();
     let idx2site =
-        del_msh::elem2elem::from_polygon_mesh(&site2idx, &idx2vtxv, vtxv2xy.dims2().unwrap().0);
+        del_msh::elem2elem::from_polygon_mesh(&voronoi_mesh.site2idx, &voronoi_mesh.idx2vtxv, vtxv2xy.dims2().unwrap().0);
     let vi = VoronoiInfo {
-        site2idx,
-        idx2vtxv,
-        vtxv2info,
+        site2idx: voronoi_mesh.site2idx,
+        idx2vtxv: voronoi_mesh.idx2vtxv,
+        vtxv2info: voronoi_mesh.vtxv2info,
         idx2site,
     };
     (vtxv2xy, vi)

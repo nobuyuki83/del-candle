@@ -4,8 +4,9 @@ use std::ops::Deref;
 struct Layer {
     tri2vtx: candle_core::Tensor,
     vtx2xy: candle_core::Tensor,
-    img_shape: (usize, usize), // (width, height)
-    transform_xy2pix: [f32; 9],       // transform column major
+    pix2tri: candle_core::Tensor,
+    img_shape: (usize, usize),  // (width, height)
+    transform_xy2pix: [f32; 9], // transform column major
 }
 
 impl candle_core::CustomOp1 for Layer {
@@ -20,13 +21,13 @@ impl candle_core::CustomOp1 for Layer {
     ) -> candle_core::Result<(CpuStorage, Shape)> {
         let (num_vtx, two) = self.vtx2xy.shape().dims2()?;
         assert_eq!(two, 2);
-        let (num_vtx1, num_dim) = layout.shape().dims2()?;
+        let (num_vtx1, num_channel) = layout.shape().dims2()?;
         // dbg!(num_dim);
         assert_eq!(num_vtx, num_vtx1);
         let vtx2color = storage.as_slice::<f32>()?;
         let tri2vtx = self.tri2vtx.storage_and_layout().0;
         let tri2vtx = match tri2vtx.deref() {
-            candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<i64>()?,
+            candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<u32>()?,
             _ => panic!(),
         };
         let vtx2xy = self.vtx2xy.storage_and_layout().0;
@@ -34,17 +35,35 @@ impl candle_core::CustomOp1 for Layer {
             candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<f32>()?,
             _ => panic!(),
         };
+        let img2tri = self.pix2tri.storage_and_layout().0;
+        let img2tri = match img2tri.deref() {
+            candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<u32>()?,
+            _ => panic!(),
+        };
         let mut img = vec![0f32; self.img_shape.0 * self.img_shape.1];
-        del_canvas::raycast_trimesh2::trimsh2_vtxcolor(
-            self.img_shape.0,
-            self.img_shape.1,
-            &mut img,
-            tri2vtx,
-            vtx2xy,
-            vtx2color,
-            &self.transform_xy2pix,
-        );
-        let shape = candle_core::Shape::from((self.img_shape.0, self.img_shape.1, num_dim));
+        let transform_pix2xy = del_geo::mat3::try_inverse(&self.transform_xy2pix).unwrap();
+        for i_h in 0..self.img_shape.1 {
+            for i_w in 0..self.img_shape.0 {
+                let i_tri = img2tri[i_h * self.img_shape.0 + i_w];
+                if i_tri == u32::MAX { continue; }
+                let p_xy = del_geo::mat3::transform_homogeneous::<f32>(
+                    &transform_pix2xy,
+                    &[i_w as f32 + 0.5, i_h as f32 + 0.5]).unwrap();
+                let (p0,p1,p2) = del_msh::trimesh2::to_corner_points(tri2vtx, vtx2xy, i_tri);
+                let Some((r0, r1, r2)) = del_geo::tri2::barycentric_coords(&p0, &p1, &p2, &p_xy) else { continue; };
+                let i_tri = i_tri as usize;
+                let iv0: usize = tri2vtx[i_tri * 3 + 0] as usize;
+                let iv1: usize = tri2vtx[i_tri * 3 + 1] as usize;
+                let iv2: usize = tri2vtx[i_tri * 3 + 2] as usize;
+                for i_channel in 0..num_channel {
+                    let c0 = vtx2color[iv0 * num_channel + i_channel];
+                    let c1 = vtx2color[iv1 * num_channel + i_channel];
+                    let c2 = vtx2color[iv2 * num_channel + i_channel];
+                    img[(i_h * self.img_shape.0 + i_w)* num_channel + i_channel] = r0 * c0 + r1 * c1 + r2 * c2;
+                }
+            }
+        }
+        let shape = candle_core::Shape::from((self.img_shape.0, self.img_shape.1, num_channel));
         let storage = candle_core::WithDType::to_cpu_storage_owned(img);
         Ok((storage, shape))
     }
@@ -64,12 +83,17 @@ impl candle_core::CustomOp1 for Layer {
         assert_eq!(num_channels, _num_channels);
         let tri2vtx = self.tri2vtx.storage_and_layout().0;
         let tri2vtx = match tri2vtx.deref() {
-            candle_core::Storage::Cpu(cpu_tri2vtx) => cpu_tri2vtx.as_slice::<i64>()?,
+            candle_core::Storage::Cpu(cpu_tri2vtx) => cpu_tri2vtx.as_slice::<u32>()?,
             _ => panic!(),
         };
         let vtx2xy = self.vtx2xy.storage_and_layout().0;
         let vtx2xy = match vtx2xy.deref() {
             candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<f32>()?,
+            _ => panic!(),
+        };
+        let pix2tri = self.pix2tri.storage_and_layout().0;
+        let pix2tri = match pix2tri.deref() {
+            candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<u32>()?,
             _ => panic!(),
         };
         assert_eq!(vtx2xy.len(), num_vtx * 2);
@@ -84,19 +108,16 @@ impl candle_core::CustomOp1 for Layer {
         let transform_pix2xy = del_geo::mat3::try_inverse(&self.transform_xy2pix).unwrap();
         for i_h in 0..height {
             for i_w in 0..width {
+                let i_tri = pix2tri[i_h * self.img_shape.0 + i_w];
+                if i_tri == u32::MAX { continue; }
                 let p_xy = del_geo::mat3::transform_homogeneous(
                     &transform_pix2xy,
                     &[i_w as f32 + 0.5, i_h as f32 + 0.5],
                 )
                 .unwrap();
-                let Some((i_tri, r0, r1)) =
-                    del_msh::trimesh2::search_bruteforce_one_triangle_include_input_point(
-                        &p_xy, tri2vtx, vtx2xy,
-                    )
-                else {
-                    continue;
-                };
-                let r2 = 1.0f32 - r0 - r1;
+                let (p0,p1,p2) = del_msh::trimesh2::to_corner_points(tri2vtx, vtx2xy, i_tri);
+                let Some((r0, r1, r2)) = del_geo::tri2::barycentric_coords(&p0, &p1, &p2, &p_xy) else { continue; };
+                let i_tri = i_tri as usize;
                 let iv0 = tri2vtx[i_tri * 3 + 0] as usize;
                 let iv1 = tri2vtx[i_tri * 3 + 1] as usize;
                 let iv2 = tri2vtx[i_tri * 3 + 2] as usize;
@@ -118,7 +139,7 @@ impl candle_core::CustomOp1 for Layer {
 }
 
 #[test]
-fn optimize_vtxcolor() -> anyhow::Result<()> {
+fn test_optimize_vtxcolor() -> anyhow::Result<()> {
     let img_trg = {
         use image::GenericImageView;
         let img_trg = image::open("tesla.png").unwrap();
@@ -136,13 +157,16 @@ fn optimize_vtxcolor() -> anyhow::Result<()> {
     };
     let img_shape = (img_trg.dims3().unwrap().1, img_trg.dims3().unwrap().0);
     // transformation from xy to pixel coordinate
-    let transform_xy2pix: [f32; 9] = del_canvas::cam2::transform_world2pix_ortho_preserve_asp(
-        &img_shape, &[0.0, 0.0, 1.0, 1.0]);
-    let (tri2vtx, vtx2xyz) = del_msh::trimesh2_dynamic::meshing_from_polyloop2::<i64, f32>(
+    let transform_xy2pix: [f32; 9] =
+        del_canvas::cam2::transform_world2pix_ortho_preserve_asp(&img_shape, &[0.0, 0.0, 1.0, 1.0]);
+    let (tri2vtx, vtx2xyz) = del_msh::trimesh2_dynamic::meshing_from_polyloop2::<u32, f32>(
         &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0],
         0.03,
         0.03,
     );
+
+    // ------------------
+    // below: candle
     let num_vtx = vtx2xyz.len() / 2;
     let vtx2xy = candle_core::Tensor::from_vec(
         vtx2xyz,
@@ -156,7 +180,15 @@ fn optimize_vtxcolor() -> anyhow::Result<()> {
         candle_core::Shape::from((num_tri, 3)),
         &candle_core::Device::Cpu,
     )
-    .unwrap();
+        .unwrap();
+    let pix2tri = {
+        let (bvhnodes, aabbs) = crate::bvh::from_trimesh2(&tri2vtx, &vtx2xy)?;
+        let pix2tri = crate::raycast_trimesh2::raycast(
+            tri2vtx.clone(), vtx2xy.clone(),
+            bvhnodes.clone(), aabbs.clone(),
+            img_shape, transform_xy2pix)?;
+        pix2tri
+    };
     let vtx2color = {
         use rand::Rng;
         let mut rng = rand::thread_rng();
@@ -169,27 +201,31 @@ fn optimize_vtxcolor() -> anyhow::Result<()> {
         .unwrap()
     };
     dbg!(&vtx2color.shape());
+
     for i_itr in 0..100 {
         let render = Layer {
             tri2vtx: tri2vtx.clone(),
             vtx2xy: vtx2xy.clone(),
+            pix2tri: pix2tri.clone(),
             img_shape,
             transform_xy2pix,
         };
         let img_out = vtx2color.apply_op1(render)?;
-        dbg!(&img_out.shape());
+        // dbg!(&img_out.shape());
         let diff = img_trg.sub(&img_out).unwrap().sqr()?.sum_all()?;
-        dbg!(&diff.shape());
-        dbg!(diff.to_vec0::<f32>().unwrap());
+        // dbg!(&diff.shape());
+        // dbg!(diff.to_vec0::<f32>().unwrap());
         let grad = diff.backward()?;
         let dw_vtx2color = grad.get(&vtx2color).unwrap();
-        dbg!(dw_vtx2color.dims2().unwrap());
+        // dbg!(dw_vtx2color.dims2().unwrap());
         if i_itr % 10 == 0 {
             let img_out_vec: Vec<f32> = img_out.flatten_all()?.to_vec1()?;
             del_canvas::write_png_from_float_image(
-                format!("target/foo_{}.png", i_itr),
-                img_shape.0,
-                img_shape.1,
+                format!(
+                    "target/render_meshtri2_vtxcolor-test_optimize_vtxcolor_{}.png",
+                    i_itr
+                ),
+                &img_shape,
                 &img_out_vec,
             );
         }

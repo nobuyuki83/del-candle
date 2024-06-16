@@ -4,7 +4,7 @@ fn rotate90(edge2xy: candle_core::Tensor) -> candle_core::Result<candle_core::Te
     candle_core::Tensor::stack(&[(y * -1.)?, x], 1)
 }
 
-pub fn from_edge2vtx(
+pub fn loss(
     vtx2xy: &candle_core::Tensor,
     edge2vtx: &[usize],
 ) -> candle_core::Result<candle_core::Tensor> {

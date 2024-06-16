@@ -55,7 +55,7 @@ fn main() -> anyhow::Result<()> {
     for iter in 0..300 {
         //
         let edge2vtx = del_msh::polyloop::edge2vtx(vtx2xy.dims2()?.0);
-        let unorm_diff = del_candle::cubic_stylization::from_edge2vtx(&vtx2xy, &edge2vtx)?;
+        let unorm_diff = del_candle::cubic_stylization::loss(&vtx2xy, &edge2vtx)?;
         //
         let polyloop_to_diffcoord = del_candle::polyloop2_to_diffcoord::Layer {};
         let magdiffc = vtx2xy
