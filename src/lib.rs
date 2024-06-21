@@ -1,10 +1,11 @@
+pub mod bvh;
 pub mod cubic_stylization;
 pub mod polygonmesh2_to_areas;
 pub mod polygonmesh2_to_cogs;
 pub mod polyloop2_to_diffcoord;
+pub mod raycast_trimesh;
 pub mod render_meshtri2_vtxcolor;
+pub mod render_meshtri3_depth;
 pub mod trimesh3_to_tri2nrm;
 pub mod voronoi2;
 pub mod vtx2xyz_to_edgevector;
-mod raycast_trimesh2;
-mod bvh;

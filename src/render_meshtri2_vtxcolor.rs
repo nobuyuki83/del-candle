@@ -45,12 +45,20 @@ impl candle_core::CustomOp1 for Layer {
         for i_h in 0..self.img_shape.1 {
             for i_w in 0..self.img_shape.0 {
                 let i_tri = img2tri[i_h * self.img_shape.0 + i_w];
-                if i_tri == u32::MAX { continue; }
+                if i_tri == u32::MAX {
+                    continue;
+                }
                 let p_xy = del_geo::mat3::transform_homogeneous::<f32>(
                     &transform_pix2xy,
-                    &[i_w as f32 + 0.5, i_h as f32 + 0.5]).unwrap();
-                let (p0,p1,p2) = del_msh::trimesh2::to_corner_points(tri2vtx, vtx2xy, i_tri);
-                let Some((r0, r1, r2)) = del_geo::tri2::barycentric_coords(&p0, &p1, &p2, &p_xy) else { continue; };
+                    &[i_w as f32 + 0.5, i_h as f32 + 0.5],
+                )
+                .unwrap();
+                let (p0, p1, p2) =
+                    del_msh::trimesh2::to_corner_points(tri2vtx, vtx2xy, i_tri as usize);
+                let Some((r0, r1, r2)) = del_geo::tri2::barycentric_coords(&p0, &p1, &p2, &p_xy)
+                else {
+                    continue;
+                };
                 let i_tri = i_tri as usize;
                 let iv0: usize = tri2vtx[i_tri * 3 + 0] as usize;
                 let iv1: usize = tri2vtx[i_tri * 3 + 1] as usize;
@@ -59,7 +67,8 @@ impl candle_core::CustomOp1 for Layer {
                     let c0 = vtx2color[iv0 * num_channel + i_channel];
                     let c1 = vtx2color[iv1 * num_channel + i_channel];
                     let c2 = vtx2color[iv2 * num_channel + i_channel];
-                    img[(i_h * self.img_shape.0 + i_w)* num_channel + i_channel] = r0 * c0 + r1 * c1 + r2 * c2;
+                    img[(i_h * self.img_shape.0 + i_w) * num_channel + i_channel] =
+                        r0 * c0 + r1 * c1 + r2 * c2;
                 }
             }
         }
@@ -109,14 +118,20 @@ impl candle_core::CustomOp1 for Layer {
         for i_h in 0..height {
             for i_w in 0..width {
                 let i_tri = pix2tri[i_h * self.img_shape.0 + i_w];
-                if i_tri == u32::MAX { continue; }
+                if i_tri == u32::MAX {
+                    continue;
+                }
                 let p_xy = del_geo::mat3::transform_homogeneous(
                     &transform_pix2xy,
                     &[i_w as f32 + 0.5, i_h as f32 + 0.5],
                 )
                 .unwrap();
-                let (p0,p1,p2) = del_msh::trimesh2::to_corner_points(tri2vtx, vtx2xy, i_tri);
-                let Some((r0, r1, r2)) = del_geo::tri2::barycentric_coords(&p0, &p1, &p2, &p_xy) else { continue; };
+                let (p0, p1, p2) =
+                    del_msh::trimesh2::to_corner_points(tri2vtx, vtx2xy, i_tri as usize);
+                let Some((r0, r1, r2)) = del_geo::tri2::barycentric_coords(&p0, &p1, &p2, &p_xy)
+                else {
+                    continue;
+                };
                 let i_tri = i_tri as usize;
                 let iv0 = tri2vtx[i_tri * 3 + 0] as usize;
                 let iv1 = tri2vtx[i_tri * 3 + 1] as usize;
@@ -180,13 +195,17 @@ fn test_optimize_vtxcolor() -> anyhow::Result<()> {
         candle_core::Shape::from((num_tri, 3)),
         &candle_core::Device::Cpu,
     )
-        .unwrap();
+    .unwrap();
     let pix2tri = {
         let (bvhnodes, aabbs) = crate::bvh::from_trimesh2(&tri2vtx, &vtx2xy)?;
-        let pix2tri = crate::raycast_trimesh2::raycast(
-            tri2vtx.clone(), vtx2xy.clone(),
-            bvhnodes.clone(), aabbs.clone(),
-            img_shape, transform_xy2pix)?;
+        let pix2tri = crate::raycast_trimesh::raycast2(
+            &tri2vtx,
+            &vtx2xy,
+            &bvhnodes,
+            &aabbs,
+            &img_shape,
+            &transform_xy2pix,
+        )?;
         pix2tri
     };
     let vtx2color = {

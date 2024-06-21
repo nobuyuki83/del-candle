@@ -78,15 +78,15 @@ impl candle_core::CustomOp1 for crate::voronoi2::Layer {
                 assert!(info[0] < num_vtxl);
                 let i1_loop = info[0];
                 let i2_loop = (i1_loop + 1) % num_vtxl;
-                let l1 = del_geo::vec2::to_na(&self.vtxl2xy, i1_loop);
-                let l2 = del_geo::vec2::to_na(&self.vtxl2xy, i2_loop);
+                let l1 = del_msh::vtx2xyz::to_navec2(&self.vtxl2xy, i1_loop);
+                let l2 = del_msh::vtx2xyz::to_navec2(&self.vtxl2xy, i2_loop);
                 let i0_site = info[1];
                 let i1_site = info[2];
-                let s0 = del_geo::vec2::to_na(site2xy, i0_site);
-                let s1 = del_geo::vec2::to_na(site2xy, i1_site);
+                let s0 = del_msh::vtx2xyz::to_navec2(site2xy, i0_site);
+                let s1 = del_msh::vtx2xyz::to_navec2(site2xy, i1_site);
                 let (_r, drds0, drds1) =
                     del_geo::line2::dw_intersection_against_bisector(&l1, &(l2 - l1), &s0, &s1);
-                let dv = del_geo::vec2::to_na(dw_vtxv2xy, i_vtxv);
+                let dv = del_msh::vtx2xyz::to_navec2(dw_vtxv2xy, i_vtxv);
                 {
                     let ds0 = drds0.transpose() * dv;
                     dw_site2xy[i0_site * 2 + 0] += ds0.x;
@@ -100,11 +100,11 @@ impl candle_core::CustomOp1 for crate::voronoi2::Layer {
             } else {
                 // circumference of three voronoi vtx
                 let idx_site = [info[1], info[2], info[3]];
-                let s0 = del_geo::vec2::to_na(site2xy, idx_site[0]);
-                let s1 = del_geo::vec2::to_na(site2xy, idx_site[1]);
-                let s2 = del_geo::vec2::to_na(site2xy, idx_site[2]);
+                let s0 = del_msh::vtx2xyz::to_navec2(site2xy, idx_site[0]);
+                let s1 = del_msh::vtx2xyz::to_navec2(site2xy, idx_site[1]);
+                let s2 = del_msh::vtx2xyz::to_navec2(site2xy, idx_site[2]);
                 let (_v, dvds) = del_geo::tri2::wdw_circumcenter(&s0, &s1, &s2);
-                let dv = del_geo::vec2::to_na(dw_vtxv2xy, i_vtxv);
+                let dv = del_msh::vtx2xyz::to_navec2(dw_vtxv2xy, i_vtxv);
                 for i_node in 0..3 {
                     let ds0 = dvds[i_node].transpose() * dv;
                     let is0 = idx_site[i_node];
@@ -210,8 +210,11 @@ where
         vtxv2info: voronoi_mesh.vtxv2info.clone(),
     };
     let vtxv2xy = site2xy.apply_op1(site2_to_voronoi2).unwrap();
-    let idx2site =
-        del_msh::elem2elem::from_polygon_mesh(&voronoi_mesh.site2idx, &voronoi_mesh.idx2vtxv, vtxv2xy.dims2().unwrap().0);
+    let idx2site = del_msh::elem2elem::from_polygon_mesh(
+        &voronoi_mesh.site2idx,
+        &voronoi_mesh.idx2vtxv,
+        vtxv2xy.dims2().unwrap().0,
+    );
     let vi = VoronoiInfo {
         site2idx: voronoi_mesh.site2idx,
         idx2vtxv: voronoi_mesh.idx2vtxv,

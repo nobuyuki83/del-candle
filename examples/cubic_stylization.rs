@@ -68,12 +68,12 @@ fn main() -> anyhow::Result<()> {
         let grad = loss.backward()?;
         let dw_vtx2xyz = grad.get(&vtx2xy).unwrap();
         let _ = vtx2xy.set(&vtx2xy.as_tensor().sub(&(dw_vtx2xyz * 0.05)?)?);
-        if iter % 30 == 0 {
+        if iter % 100 == 0 {
             let vtx2xy: Vec<_> = vtx2xy.flatten_all()?.to_vec1::<f32>()?;
             let hoge = del_msh::polyloop::to_cylinder_trimeshes(&vtx2xy, 2, 100.);
             // let _ = del_msh::io_obj::save_polyloop_(format!("target/polyloop_{}.obj", iter), &vtx2xy, 2);
             let _ = del_msh::io_obj::save_tri2vtx_vtx2xyz(
-                format!("target/polyloop_{}.obj", iter / 30),
+                format!("target/exaples-cubic_stylization_{}.obj", iter / 30),
                 &hoge.0,
                 &hoge.1,
                 3,

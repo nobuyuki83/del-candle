@@ -7,11 +7,11 @@ edition = "2021"
 
 [dependencies]
 png = "0.17.13"
-nalgebra = "0.32.5"
+nalgebra = "0.32.6"
 # candle-core = { git = "https://github.com/huggingface/candle.git", features=["cuda"]}
 candle-core = { git = "https://github.com/huggingface/candle.git" }
 candle-nn = { git = "https://github.com/huggingface/candle.git" }
-anyhow = "1.0.83"
+anyhow = "1.0.86"
 rand = "0.8.5"
 image = "0.25.1"
 #

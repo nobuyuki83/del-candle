@@ -64,11 +64,11 @@ impl candle_core::CustomOp1 for Layer {
                 node2vtx[1] as usize,
                 node2vtx[2] as usize,
             );
-            let p0 = del_geo::vec3::to_na(vtx2xyz, i0);
-            let p1 = del_geo::vec3::to_na(vtx2xyz, i1);
-            let p2 = del_geo::vec3::to_na(vtx2xyz, i2);
+            let p0 = del_msh::vtx2xyz::to_navec3(vtx2xyz, i0);
+            let p1 = del_msh::vtx2xyz::to_navec3(vtx2xyz, i1);
+            let p2 = del_msh::vtx2xyz::to_navec3(vtx2xyz, i2);
             let dw = del_geo::tri3::dw_normal(&p0, &p1, &p2);
-            let dw_nrm = del_geo::vec3::to_na(dw_tri2nrm, i_tri);
+            let dw_nrm = del_msh::vtx2xyz::to_navec3(dw_tri2nrm, i_tri);
             let q0 = dw_nrm.transpose() * dw[0];
             let q1 = dw_nrm.transpose() * dw[1];
             let q2 = dw_nrm.transpose() * dw[2];
