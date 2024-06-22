@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::ops::Deref;
 
 pub fn raycast2(
@@ -83,31 +84,35 @@ pub fn raycast3(
         candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<u32>()?,
         _ => panic!(),
     };
-    let mut img = vec![u32::MAX; img_shape.0 * img_shape.1];
-    for i_h in 0..img_shape.1 {
-        for i_w in 0..img_shape.0 {
-            let (ray_org, ray_dir) =
-                del_canvas::cam3::ray3_homogeneous((i_w, i_h), img_shape, &transform_ndc2world);
-            let mut hits: Vec<(f32, usize)> = vec![];
-            del_msh::bvh3::search_intersection_ray::<u32>(
-                &mut hits,
-                &ray_org,
-                &ray_dir,
-                &del_msh::bvh3::TriMeshWithBvh {
-                    tri2vtx,
-                    vtx2xyz,
-                    bvhnodes,
-                    aabbs,
-                },
-                0,
-            );
-            hits.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-            let Some(&(_depth, i_tri)) = hits.first() else {
-                continue;
-            };
-            img[i_h * img_shape.0 + i_w] = i_tri as u32;
-        }
-    }
+    let tri_for_pix = |i_pix: usize| {
+        let i_h = i_pix / img_shape.0;
+        let i_w = i_pix - i_h * img_shape.0;
+        //
+        let (ray_org, ray_dir) =
+            del_canvas::cam3::ray3_homogeneous((i_w, i_h), img_shape, &transform_ndc2world);
+        let mut hits: Vec<(f32, usize)> = vec![];
+        del_msh::bvh3::search_intersection_ray::<u32>(
+            &mut hits,
+            &ray_org,
+            &ray_dir,
+            &del_msh::bvh3::TriMeshWithBvh {
+                tri2vtx,
+                vtx2xyz,
+                bvhnodes,
+                aabbs,
+            },
+            0,
+        );
+        hits.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        let Some(&(_depth, i_tri)) = hits.first() else {
+            return u32::MAX;
+        };
+        return i_tri as u32;
+    };
+    let img: Vec<u32> = (0..img_shape.0 * img_shape.1)
+        .into_par_iter()
+        .map(tri_for_pix)
+        .collect();
     let img = candle_core::Tensor::from_vec(img, *img_shape, &candle_core::Device::Cpu)?;
     Ok(img)
 }

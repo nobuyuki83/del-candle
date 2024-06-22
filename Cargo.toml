@@ -14,10 +14,12 @@ candle-nn = { git = "https://github.com/huggingface/candle.git" }
 anyhow = "1.0.86"
 rand = "0.8.5"
 image = "0.25.1"
+rayon = "1.10.0"
 #
 del-geo = { path = "../del-geo"}
 del-msh = { path = "../del-msh"}
 del-canvas = { path = "../del-canvas"}
+del-fem = { path = "../del-fem"}
 #del-geo = "0.1.22"
 #del-msh = "0.1.28"
 #del-canvas = "0.1.1"

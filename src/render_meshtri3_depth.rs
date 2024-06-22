@@ -105,18 +105,33 @@ impl candle_core::CustomOp1 for Layer {
                 );
                 let i_tri = i_tri as usize;
                 let (p0, p1, p2) = del_msh::trimesh3::to_corner_points(tri2vtx, vtx2xyz, i_tri);
-                let Some((_t, _u, _v, data))
-                    = del_geo::tri3::ray_triangle_intersection(
-                    &ray_org.into(), &ray_dir.into(), &p0.into(), &p1.into(), &p2.into()) else { continue; };
+                let Some((_t, _u, _v, data)) = del_geo::tri3::ray_triangle_intersection(
+                    &ray_org.into(),
+                    &ray_dir.into(),
+                    &p0.into(),
+                    &p1.into(),
+                    &p2.into(),
+                ) else {
+                    continue;
+                };
                 let dw_depth = dw_pix2depth[i_h * self.img_shape.0 + i_w];
-                let (dw_p0, dw_p1, dw_p2)
-                    = del_geo::tri3::dw_ray_triangle_intersection_(-dw_depth, 0., 0., &data);
+                let (dw_p0, dw_p1, dw_p2) =
+                    del_geo::tri3::dw_ray_triangle_intersection_(-dw_depth, 0., 0., &data);
                 let iv0 = tri2vtx[i_tri * 3 + 0] as usize;
                 let iv1 = tri2vtx[i_tri * 3 + 1] as usize;
                 let iv2 = tri2vtx[i_tri * 3 + 2] as usize;
-                dw_vtx2xyz[iv0*3..iv0*3+3].iter_mut().enumerate().for_each(|(i, v)| *v += dw_p0[i]);
-                dw_vtx2xyz[iv1*3..iv1*3+3].iter_mut().enumerate().for_each(|(i, v)| *v += dw_p1[i]);
-                dw_vtx2xyz[iv2*3..iv2*3+3].iter_mut().enumerate().for_each(|(i, v)| *v += dw_p2[i]);
+                dw_vtx2xyz[iv0 * 3..iv0 * 3 + 3]
+                    .iter_mut()
+                    .enumerate()
+                    .for_each(|(i, v)| *v += dw_p0[i]);
+                dw_vtx2xyz[iv1 * 3..iv1 * 3 + 3]
+                    .iter_mut()
+                    .enumerate()
+                    .for_each(|(i, v)| *v += dw_p1[i]);
+                dw_vtx2xyz[iv2 * 3..iv2 * 3 + 3]
+                    .iter_mut()
+                    .enumerate()
+                    .for_each(|(i, v)| *v += dw_p2[i]);
             }
         }
         let dw_vtx2xyz = candle_core::Tensor::from_vec(
@@ -139,8 +154,8 @@ fn test_optimize_depth() -> anyhow::Result<()> {
     //
     let transform_ndc2world = del_geo::mat4::identity::<f32>();
     let (pix2depth_trg, pix2mask) = {
-        let mut img2depth_trg = vec!(0f32; img_shape.0 * img_shape.1);
-        let mut img2mask = vec!(0f32; img_shape.0 * img_shape.1);
+        let mut img2depth_trg = vec![0f32; img_shape.0 * img_shape.1];
+        let mut img2mask = vec![0f32; img_shape.0 * img_shape.1];
         for i_h in 0..img_shape.1 {
             for i_w in 0..img_shape.0 {
                 let (ray_org, ray_dir) = del_canvas::cam3::ray3_homogeneous(
@@ -150,19 +165,25 @@ fn test_optimize_depth() -> anyhow::Result<()> {
                 );
                 let x = ray_org[0];
                 let y = ray_org[1];
-                let r = (x*x+y*y).sqrt();
-                if r > 0.5 { continue; }
+                let r = (x * x + y * y).sqrt();
+                if r > 0.5 {
+                    continue;
+                }
                 img2depth_trg[i_h * img_shape.0 + i_w] = 0.6;
                 img2mask[i_h * img_shape.0 + i_w] = 1.0;
             }
         }
-        let img2depth_trg = Tensor::from_vec(img2depth_trg,img_shape, &candle_core::Device::Cpu)?;
-        let img2mask = Tensor::from_vec(img2mask,img_shape, &candle_core::Device::Cpu)?;
+        let img2depth_trg = Tensor::from_vec(img2depth_trg, img_shape, &candle_core::Device::Cpu)?;
+        let img2mask = Tensor::from_vec(img2mask, img_shape, &candle_core::Device::Cpu)?;
         (img2depth_trg, img2mask)
     };
     {
         let pix2depth_trg = pix2depth_trg.flatten_all()?.to_vec1::<f32>()?;
-        del_canvas::write_png_from_float_image("target/pix2depth_trg.png", &img_shape, &pix2depth_trg);
+        del_canvas::write_png_from_float_image(
+            "target/pix2depth_trg.png",
+            &img_shape,
+            &pix2depth_trg,
+        );
         //
         let pix2mask = pix2mask.flatten_all()?.to_vec1::<f32>()?;
         del_canvas::write_png_from_float_image("target/pix2mask.png", &img_shape, &pix2mask);
@@ -203,10 +224,12 @@ fn test_optimize_depth() -> anyhow::Result<()> {
             let tri2vtx = tri2vtx.flatten_all()?.to_vec1::<u32>()?;
             let _ = del_msh::io_obj::save_tri2vtx_vtx2xyz(
                 format!("target/hoge_{}.obj", itr),
-                &tri2vtx, &vtx2xyz, 3);
+                &tri2vtx,
+                &vtx2xyz,
+                3,
+            );
         }
     }
-
 
     Ok(())
 }
