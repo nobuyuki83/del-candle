@@ -60,7 +60,7 @@ impl candle_core::CustomOp1 for Layer {
                     continue;
                 };
                 let i_tri = i_tri as usize;
-                let iv0: usize = tri2vtx[i_tri * 3 + 0] as usize;
+                let iv0: usize = tri2vtx[i_tri * 3] as usize;
                 let iv1: usize = tri2vtx[i_tri * 3 + 1] as usize;
                 let iv2: usize = tri2vtx[i_tri * 3 + 2] as usize;
                 for i_channel in 0..num_channel {

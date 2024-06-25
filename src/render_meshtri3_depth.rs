@@ -52,7 +52,7 @@ impl candle_core::CustomOp1 for Layer {
                 pix2depth[i_h * self.img_shape.0 + i_w] = 1. - coeff;
             }
         }
-        let shape = candle_core::Shape::from((self.img_shape.0, self.img_shape.1));
+        let shape = candle_core::Shape::from((self.img_shape.1, self.img_shape.0));
         let storage = candle_core::WithDType::to_cpu_storage_owned(pix2depth);
         Ok((storage, shape))
     }
@@ -230,6 +230,29 @@ fn test_optimize_depth() -> anyhow::Result<()> {
             );
         }
     }
-
     Ok(())
+}
+
+pub fn render(
+    tri2vtx: &candle_core::Tensor,
+    vtx2xyz: &candle_core::Tensor,
+    img_shape: &(usize, usize),
+    transform_ndc2world: &[f32; 16],
+) -> candle_core::Result<candle_core::Tensor> {
+    let (bvhnodes, aabbs) = crate::bvh::from_trimesh3(tri2vtx, vtx2xyz)?;
+    let pix2tri = crate::raycast_trimesh::raycast3(
+        tri2vtx,
+        vtx2xyz,
+        &bvhnodes,
+        &aabbs,
+        img_shape,
+        transform_ndc2world,
+    )?;
+    let render = crate::render_meshtri3_depth::Layer {
+        tri2vtx: tri2vtx.clone(),
+        pix2tri: pix2tri.clone(),
+        img_shape: *img_shape,
+        transform_nbc2world: *transform_ndc2world,
+    };
+    vtx2xyz.apply_op1(render)
 }

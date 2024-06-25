@@ -32,7 +32,7 @@ pub fn raycast2(
         _ => panic!(),
     };
     let mut img = vec![u32::MAX; img_shape.0 * img_shape.1];
-    let transform_pix2xy = del_geo::mat3::try_inverse(&transform_xy2pix).unwrap();
+    let transform_pix2xy = del_geo::mat3::try_inverse(transform_xy2pix).unwrap();
     for i_h in 0..img_shape.1 {
         for i_w in 0..img_shape.0 {
             let p_xy = del_geo::mat3::transform_homogeneous(
@@ -89,7 +89,7 @@ pub fn raycast3(
         let i_w = i_pix - i_h * img_shape.0;
         //
         let (ray_org, ray_dir) =
-            del_canvas::cam3::ray3_homogeneous((i_w, i_h), img_shape, &transform_ndc2world);
+            del_canvas::cam3::ray3_homogeneous((i_w, i_h), img_shape, transform_ndc2world);
         let mut hits: Vec<(f32, usize)> = vec![];
         del_msh::bvh3::search_intersection_ray::<u32>(
             &mut hits,
@@ -107,7 +107,7 @@ pub fn raycast3(
         let Some(&(_depth, i_tri)) = hits.first() else {
             return u32::MAX;
         };
-        return i_tri as u32;
+        i_tri as u32
     };
     let img: Vec<u32> = (0..img_shape.0 * img_shape.1)
         .into_par_iter()

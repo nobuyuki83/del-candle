@@ -60,23 +60,13 @@ fn main() -> anyhow::Result<()> {
 
     let now = Instant::now();
     for _itr in 0..100 {
-        let (bvhnodes, aabbs) = del_candle::bvh::from_trimesh3(&tri2vtx, &vtx2xyz)?;
-        let pix2tri = del_candle::raycast_trimesh::raycast3(
+        let pix2depth = del_candle::render_meshtri3_depth::render(
             &tri2vtx,
             &vtx2xyz,
-            &bvhnodes,
-            &aabbs,
             &img_shape,
             &transform_ndc2world,
         )?;
-        let render = del_candle::render_meshtri3_depth::Layer {
-            tri2vtx: tri2vtx.clone(),
-            pix2tri: pix2tri.clone(),
-            img_shape,
-            transform_nbc2world: transform_ndc2world.clone(),
-        };
-        let pix2depth = vtx2xyz.apply_op1(render)?;
-        assert_eq!(pix2depth.shape().dims2()?, img_shape);
+        assert_eq!(pix2depth.shape().dims2()?, (img_shape.1, img_shape.0));
         /*
         {
             let pix2depth = pix2depth.flatten_all()?.to_vec1::<f32>()?;
