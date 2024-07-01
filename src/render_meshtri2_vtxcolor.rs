@@ -41,21 +41,21 @@ impl candle_core::CustomOp1 for Layer {
             _ => panic!(),
         };
         let mut img = vec![0f32; self.img_shape.0 * self.img_shape.1];
-        let transform_pix2xy = del_geo::mat3::try_inverse(&self.transform_xy2pix).unwrap();
+        let transform_pix2xy = del_geo_core::mat3::try_inverse(&self.transform_xy2pix).unwrap();
         for i_h in 0..self.img_shape.1 {
             for i_w in 0..self.img_shape.0 {
                 let i_tri = img2tri[i_h * self.img_shape.0 + i_w];
                 if i_tri == u32::MAX {
                     continue;
                 }
-                let p_xy = del_geo::mat3::transform_homogeneous::<f32>(
+                let p_xy = del_geo_core::mat3::transform_homogeneous::<f32>(
                     &transform_pix2xy,
                     &[i_w as f32 + 0.5, i_h as f32 + 0.5],
                 )
                 .unwrap();
                 let (p0, p1, p2) =
-                    del_msh::trimesh2::to_corner_points(tri2vtx, vtx2xy, i_tri as usize);
-                let Some((r0, r1, r2)) = del_geo::tri2::barycentric_coords(&p0, &p1, &p2, &p_xy)
+                    del_msh_core::trimesh2::to_corner_points(tri2vtx, vtx2xy, i_tri as usize);
+                let Some((r0, r1, r2)) = del_geo_core::tri2::barycentric_coords(&p0, &p1, &p2, &p_xy)
                 else {
                     continue;
                 };
@@ -114,21 +114,21 @@ impl candle_core::CustomOp1 for Layer {
         assert_eq!(dw_pix2color.len(), height * width * num_channels);
         //
         let mut dw_vtx2color = vec![0f32; num_vtx * num_channels];
-        let transform_pix2xy = del_geo::mat3::try_inverse(&self.transform_xy2pix).unwrap();
+        let transform_pix2xy = del_geo_core::mat3::try_inverse(&self.transform_xy2pix).unwrap();
         for i_h in 0..height {
             for i_w in 0..width {
                 let i_tri = pix2tri[i_h * self.img_shape.0 + i_w];
                 if i_tri == u32::MAX {
                     continue;
                 }
-                let p_xy = del_geo::mat3::transform_homogeneous(
+                let p_xy = del_geo_core::mat3::transform_homogeneous(
                     &transform_pix2xy,
                     &[i_w as f32 + 0.5, i_h as f32 + 0.5],
                 )
                 .unwrap();
                 let (p0, p1, p2) =
-                    del_msh::trimesh2::to_corner_points(tri2vtx, vtx2xy, i_tri as usize);
-                let Some((r0, r1, r2)) = del_geo::tri2::barycentric_coords(&p0, &p1, &p2, &p_xy)
+                    del_msh_core::trimesh2::to_corner_points(tri2vtx, vtx2xy, i_tri as usize);
+                let Some((r0, r1, r2)) = del_geo_core::tri2::barycentric_coords(&p0, &p1, &p2, &p_xy)
                 else {
                     continue;
                 };

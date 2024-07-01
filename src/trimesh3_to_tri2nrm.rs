@@ -20,7 +20,7 @@ impl candle_core::CustomOp1 for Layer {
             candle_core::Storage::Cpu(cpu_tri2vtx) => cpu_tri2vtx.as_slice::<i64>()?,
             _ => panic!(),
         };
-        let tri2normal = del_msh::trimesh3::tri2normal(tri2vtx, vtx2xyz);
+        let tri2normal = del_msh_core::trimesh3::tri2normal(tri2vtx, vtx2xyz);
         let shape = candle_core::Shape::from(self.tri2vtx.shape().dims2()?);
         let storage = candle_core::WithDType::to_cpu_storage_owned(tri2normal);
         Ok((storage, shape))
@@ -64,11 +64,11 @@ impl candle_core::CustomOp1 for Layer {
                 node2vtx[1] as usize,
                 node2vtx[2] as usize,
             );
-            let p0 = del_msh::vtx2xyz::to_navec3(vtx2xyz, i0);
-            let p1 = del_msh::vtx2xyz::to_navec3(vtx2xyz, i1);
-            let p2 = del_msh::vtx2xyz::to_navec3(vtx2xyz, i2);
-            let dw = del_geo::tri3::dw_normal(&p0, &p1, &p2);
-            let dw_nrm = del_msh::vtx2xyz::to_navec3(dw_tri2nrm, i_tri);
+            let p0 = del_msh_core::vtx2xyz::to_navec3(vtx2xyz, i0);
+            let p1 = del_msh_core::vtx2xyz::to_navec3(vtx2xyz, i1);
+            let p2 = del_msh_core::vtx2xyz::to_navec3(vtx2xyz, i2);
+            let dw = del_geo_nalgebra::tri3::dw_normal(&p0, &p1, &p2);
+            let dw_nrm = del_msh_core::vtx2xyz::to_navec3(dw_tri2nrm, i_tri);
             let q0 = dw_nrm.transpose() * dw[0];
             let q1 = dw_nrm.transpose() * dw[1];
             let q2 = dw_nrm.transpose() * dw[2];

@@ -20,7 +20,7 @@ impl candle_core::CustomOp1 for crate::polygonmesh2_to_areas::Layer {
     ) -> candle_core::Result<(CpuStorage, Shape)> {
         assert_eq!(layout.shape().dims2()?.1, 2);
         let vtx2xy = storage.as_slice::<f32>()?;
-        let elem2area = del_msh::polygon_mesh::elem2area(&self.elem2idx, &self.idx2vtx, vtx2xy);
+        let elem2area = del_msh_core::polygon_mesh::elem2area(&self.elem2idx, &self.idx2vtx, vtx2xy);
         let shape = candle_core::Shape::from(elem2area.len());
         let storage = candle_core::WithDType::to_cpu_storage_owned(elem2area);
         Ok((storage, shape))

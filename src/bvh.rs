@@ -14,8 +14,8 @@ pub fn from_trimesh2(
         candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<f32>()?,
         _ => panic!(),
     };
-    let bvhnodes = del_msh::bvh_topology_morton::from_triangle_mesh::<u32>(tri2vtx, vtx2xy, 2);
-    let aabbs = del_msh::bvh2::aabbs_from_uniform_mesh::<u32, f32>(
+    let bvhnodes = del_msh_core::bvh_topology_morton::from_triangle_mesh::<u32>(tri2vtx, vtx2xy, 2);
+    let aabbs = del_msh_core::bvh2::aabbs_from_uniform_mesh::<u32, f32>(
         0,
         &bvhnodes,
         Some(tri2vtx),
@@ -52,8 +52,8 @@ pub fn from_trimesh3(
         candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<f32>()?,
         _ => panic!(),
     };
-    let bvhnodes = del_msh::bvh_topology_morton::from_triangle_mesh::<u32>(tri2vtx, vtx2xyz, 3);
-    let aabbs = del_msh::bvh3::aabbs_from_uniform_mesh::<u32, f32>(
+    let bvhnodes = del_msh_core::bvh_topology_morton::from_triangle_mesh::<u32>(tri2vtx, vtx2xyz, 3);
+    let aabbs = del_msh_core::bvh3::aabbs_from_uniform_mesh::<u32, f32>(
         0,
         &bvhnodes,
         Some(tri2vtx),

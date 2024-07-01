@@ -44,9 +44,9 @@ impl candle_core::CustomOp1 for Layer {
                     &self.transform_nbc2world,
                 );
                 let (p0, p1, p2) =
-                    del_msh::trimesh3::to_corner_points(tri2vtx, vtx2xyz, i_tri as usize);
+                    del_msh_core::trimesh3::to_corner_points(tri2vtx, vtx2xyz, i_tri as usize);
                 let coeff =
-                    del_geo::tri3::ray_triangle_intersection_(&ray_org, &ray_dir, &p0, &p1, &p2)
+                    del_geo_core::tri3::ray_triangle_intersection_(&ray_org, &ray_dir, &p0, &p1, &p2)
                         .unwrap();
                 // let q = del_geo::vec3::axpy_(coeff, &ray_dir, &ray_org);
                 pix2depth[i_h * self.img_shape.0 + i_w] = 1. - coeff;
@@ -104,8 +104,8 @@ impl candle_core::CustomOp1 for Layer {
                     &self.transform_nbc2world,
                 );
                 let i_tri = i_tri as usize;
-                let (p0, p1, p2) = del_msh::trimesh3::to_corner_points(tri2vtx, vtx2xyz, i_tri);
-                let Some((_t, _u, _v, data)) = del_geo::tri3::ray_triangle_intersection(
+                let (p0, p1, p2) = del_msh_core::trimesh3::to_corner_points(tri2vtx, vtx2xyz, i_tri);
+                let Some((_t, _u, _v, data)) = del_geo_nalgebra::tri3::ray_triangle_intersection(
                     &ray_org.into(),
                     &ray_dir.into(),
                     &p0.into(),
@@ -116,7 +116,7 @@ impl candle_core::CustomOp1 for Layer {
                 };
                 let dw_depth = dw_pix2depth[i_h * self.img_shape.0 + i_w];
                 let (dw_p0, dw_p1, dw_p2) =
-                    del_geo::tri3::dw_ray_triangle_intersection_(-dw_depth, 0., 0., &data);
+                    del_geo_nalgebra::tri3::dw_ray_triangle_intersection_(-dw_depth, 0., 0., &data);
                 let iv0 = tri2vtx[i_tri * 3 + 0] as usize;
                 let iv1 = tri2vtx[i_tri * 3 + 1] as usize;
                 let iv2 = tri2vtx[i_tri * 3 + 2] as usize;
@@ -134,7 +134,7 @@ impl candle_core::CustomOp1 for Layer {
                     .for_each(|(i, v)| *v += dw_p2[i]);
             }
         }
-        let dw_vtx2xyz = candle_core::Tensor::from_vec(
+        let dw_vtx2xyz = Tensor::from_vec(
             dw_vtx2xyz,
             candle_core::Shape::from((num_vtx, 3)),
             &candle_core::Device::Cpu,
@@ -234,11 +234,11 @@ fn test_optimize_depth() -> anyhow::Result<()> {
 }
 
 pub fn render(
-    tri2vtx: &candle_core::Tensor,
-    vtx2xyz: &candle_core::Tensor,
+    tri2vtx: &Tensor,
+    vtx2xyz: &Tensor,
     img_shape: &(usize, usize),
     transform_ndc2world: &[f32; 16],
-) -> candle_core::Result<candle_core::Tensor> {
+) -> candle_core::Result<Tensor> {
     let (bvhnodes, aabbs) = crate::bvh::from_trimesh3(tri2vtx, vtx2xyz)?;
     let pix2tri = crate::raycast_trimesh::raycast3(
         tri2vtx,
@@ -248,7 +248,7 @@ pub fn render(
         img_shape,
         transform_ndc2world,
     )?;
-    let render = crate::render_meshtri3_depth::Layer {
+    let render = Layer {
         tri2vtx: tri2vtx.clone(),
         pix2tri: pix2tri.clone(),
         img_shape: *img_shape,
