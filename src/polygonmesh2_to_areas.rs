@@ -74,7 +74,7 @@ impl candle_core::CustomOp1 for crate::polygonmesh2_to_areas::Layer {
 #[test]
 fn test_backward() -> anyhow::Result<()> {
     let num_vtx = 64;
-    let vtx2xy = del_msh::polyloop2::from_circle(1.0, num_vtx);
+    let vtx2xy = del_msh_core::polyloop2::from_circle(1.0, num_vtx);
     let vtx2xy = {
         candle_core::Var::from_slice(
             vtx2xy.as_slice(),
@@ -134,7 +134,7 @@ fn test_backward() -> anyhow::Result<()> {
 #[test]
 fn area_constraint() -> anyhow::Result<()> {
     let num_vtx = 64;
-    let mut vtx2xy = del_msh::polyloop2::from_circle(1.0, num_vtx);
+    let mut vtx2xy = del_msh_core::polyloop2::from_circle(1.0, num_vtx);
     {
         use rand::Rng;
         let mut rng = rand::thread_rng();
@@ -165,11 +165,10 @@ fn area_constraint() -> anyhow::Result<()> {
         let _ = vtx2xy.set(&vtx2xy.as_tensor().sub(&(dw_vtx2xyz * 0.1)?)?);
         if iter % 50 == 0 {
             let vtx2xy: Vec<_> = vtx2xy.flatten_all()?.to_vec1::<f32>()?;
-            let _ = del_msh::io_obj::save_vtx2xyz_as_polyloop(
+            del_msh_core::io_obj::save_vtx2xyz_as_polyloop(
                 format!("target/test_polyloop2area_reducing_area_{}.obj", iter),
                 &vtx2xy,
-                2,
-            );
+                2)?;
         }
     }
     Ok(())

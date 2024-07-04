@@ -145,14 +145,14 @@ impl candle_core::CustomOp1 for Layer {
 
 #[test]
 fn test_optimize_depth() -> anyhow::Result<()> {
-    let (tri2vtx, vtx2xyz) = del_msh::trimesh3_primitive::sphere_yup::<u32, f32>(0.8, 32, 32);
+    let (tri2vtx, vtx2xyz) = del_msh_core::trimesh3_primitive::sphere_yup::<u32, f32>(0.8, 32, 32);
     let num_tri = tri2vtx.len() / 3;
     let tri2vtx = Tensor::from_vec(tri2vtx, (num_tri, 3), &candle_core::Device::Cpu)?;
     let num_vtx = vtx2xyz.len() / 3;
     let vtx2xyz = candle_core::Var::from_vec(vtx2xyz, (num_vtx, 3), &candle_core::Device::Cpu)?;
     let img_shape = (200, 200);
     //
-    let transform_ndc2world = del_geo::mat4::identity::<f32>();
+    let transform_ndc2world = del_geo_core::mat4::identity::<f32>();
     let (pix2depth_trg, pix2mask) = {
         let mut img2depth_trg = vec![0f32; img_shape.0 * img_shape.1];
         let mut img2mask = vec![0f32; img_shape.0 * img_shape.1];
@@ -222,12 +222,11 @@ fn test_optimize_depth() -> anyhow::Result<()> {
         {
             let vtx2xyz = vtx2xyz.flatten_all()?.to_vec1::<f32>()?;
             let tri2vtx = tri2vtx.flatten_all()?.to_vec1::<u32>()?;
-            let _ = del_msh::io_obj::save_tri2vtx_vtx2xyz(
+            del_msh_core::io_obj::save_tri2vtx_vtx2xyz(
                 format!("target/hoge_{}.obj", itr),
                 &tri2vtx,
                 &vtx2xyz,
-                3,
-            );
+                3)?;
         }
     }
     Ok(())

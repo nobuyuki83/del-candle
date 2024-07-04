@@ -55,7 +55,7 @@ fn main() -> anyhow::Result<()> {
     ];
     let mut reng = rand::thread_rng();
     let site2xy =
-        del_msh::sampling::poisson_disk_sampling_from_polyloop2(&vtxl2xy, 0.1, 50, &mut reng);
+        del_msh_core::sampling::poisson_disk_sampling_from_polyloop2(&vtxl2xy, 0.1, 50, &mut reng);
     // dbg!(&site2room);
     // del_canvas from here
     let mut canvas = {

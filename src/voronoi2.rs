@@ -78,15 +78,15 @@ impl candle_core::CustomOp1 for crate::voronoi2::Layer {
                 assert!(info[0] < num_vtxl);
                 let i1_loop = info[0];
                 let i2_loop = (i1_loop + 1) % num_vtxl;
-                let l1 = del_msh_core::vtx2xyz::to_navec2(&self.vtxl2xy, i1_loop);
-                let l2 = del_msh_core::vtx2xyz::to_navec2(&self.vtxl2xy, i2_loop);
+                let l1 = del_msh_core::vtx2xy::to_navec2(&self.vtxl2xy, i1_loop);
+                let l2 = del_msh_core::vtx2xy::to_navec2(&self.vtxl2xy, i2_loop);
                 let i0_site = info[1];
                 let i1_site = info[2];
-                let s0 = del_msh_core::vtx2xyz::to_navec2(site2xy, i0_site);
-                let s1 = del_msh_core::vtx2xyz::to_navec2(site2xy, i1_site);
+                let s0 = del_msh_core::vtx2xy::to_navec2(site2xy, i0_site);
+                let s1 = del_msh_core::vtx2xy::to_navec2(site2xy, i1_site);
                 let (_r, drds0, drds1) =
                     del_geo_nalgebra::line2::dw_intersection_against_bisector(&l1, &(l2 - l1), &s0, &s1);
-                let dv = del_msh_core::vtx2xyz::to_navec2(dw_vtxv2xy, i_vtxv);
+                let dv = del_msh_core::vtx2xy::to_navec2(dw_vtxv2xy, i_vtxv);
                 {
                     let ds0 = drds0.transpose() * dv;
                     dw_site2xy[i0_site * 2 + 0] += ds0.x;
@@ -100,11 +100,11 @@ impl candle_core::CustomOp1 for crate::voronoi2::Layer {
             } else {
                 // circumference of three voronoi vtx
                 let idx_site = [info[1], info[2], info[3]];
-                let s0 = del_msh_core::vtx2xyz::to_navec2(site2xy, idx_site[0]);
-                let s1 = del_msh_core::vtx2xyz::to_navec2(site2xy, idx_site[1]);
-                let s2 = del_msh_core::vtx2xyz::to_navec2(site2xy, idx_site[2]);
+                let s0 = del_msh_core::vtx2xy::to_navec2(site2xy, idx_site[0]);
+                let s1 = del_msh_core::vtx2xy::to_navec2(site2xy, idx_site[1]);
+                let s2 = del_msh_core::vtx2xy::to_navec2(site2xy, idx_site[2]);
                 let (_v, dvds) = del_geo_nalgebra::tri2::wdw_circumcenter(&s0, &s1, &s2);
-                let dv = del_msh_core::vtx2xyz::to_navec2(dw_vtxv2xy, i_vtxv);
+                let dv = del_msh_core::vtx2xy::to_navec2(dw_vtxv2xy, i_vtxv);
                 for i_node in 0..3 {
                     let ds0 = dvds[i_node].transpose() * dv;
                     let is0 = idx_site[i_node];
@@ -127,7 +127,7 @@ fn test_backward() -> anyhow::Result<()> {
     let vtxl2xy = vec![0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
     let mut reng = rand::thread_rng();
     let site2xy0 =
-        del_msh::sampling::poisson_disk_sampling_from_polyloop2(&vtxl2xy, 0.15, 10, &mut reng);
+        del_msh_core::sampling::poisson_disk_sampling_from_polyloop2(&vtxl2xy, 0.15, 10, &mut reng);
     let site2xy0 = {
         candle_core::Var::from_slice(
             &site2xy0,
@@ -142,13 +142,13 @@ fn test_backward() -> anyhow::Result<()> {
         let mut vtx2xy = vtxv2xy0.clone().flatten_all()?.to_vec1::<f32>()?;
         let site2xy = site2xy0.clone().flatten_all()?.to_vec1::<f32>()?;
         vtx2xy.extend(site2xy);
-        let edge2vtxv = del_msh::edge2vtx::from_polygon_mesh(
+        let edge2vtxv = del_msh_core::edge2vtx::from_polygon_mesh(
             &voronoi_info0.site2idx,
             &voronoi_info0.idx2vtxv,
             vtx2xy.len() / 2,
         );
         let _ =
-            del_msh::io_obj::save_edge2vtx_vtx2xyz("target/voronoi0.obj", &edge2vtxv, &vtx2xy, 2);
+            del_msh_core::io_obj::save_edge2vtx_vtx2xyz("target/voronoi0.obj", &edge2vtxv, &vtx2xy, 2);
     }
     let vtxv2xygoal =
         candle_core::Tensor::randn(1f32, 1f32, vtxv2xy0.shape(), &candle_core::Device::Cpu)?;

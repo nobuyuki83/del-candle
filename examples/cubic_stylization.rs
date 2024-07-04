@@ -1,4 +1,4 @@
-use del_msh::io_svg::{
+use del_msh_core::io_svg::{
     polybezier2polyloop, svg_loops_from_outline_path, svg_outline_path_from_shape,
 };
 
@@ -33,8 +33,8 @@ fn main() -> anyhow::Result<()> {
         let loops = svg_loops_from_outline_path(&strs);
         assert_eq!(loops.len(), 1);
         let vtx2xy = polybezier2polyloop(&loops[0].0, &loops[0].1, loops[0].2, 10.0);
-        let vtx2xy = del_msh::vtx2xyz::from_array_of_nalgebra(&vtx2xy);
-        del_msh::polyloop::resample::<_, 2>(&vtx2xy, 100)
+        let vtx2xy = del_msh_core::vtx2pos::from_array_of_nalgebra(&vtx2xy);
+        del_msh_core::polyloop::resample::<_, 2>(&vtx2xy, 100)
     };
     let vtx2diff_ini = {
         let vtx2xy = candle_core::Tensor::from_slice(
@@ -54,7 +54,7 @@ fn main() -> anyhow::Result<()> {
     .unwrap();
     for iter in 0..300 {
         //
-        let edge2vtx = del_msh::polyloop::edge2vtx(vtx2xy.dims2()?.0);
+        let edge2vtx = del_msh_core::polyloop::edge2vtx(vtx2xy.dims2()?.0);
         let unorm_diff = del_candle::cubic_stylization::loss(&vtx2xy, &edge2vtx)?;
         //
         let polyloop_to_diffcoord = del_candle::polyloop2_to_diffcoord::Layer {};
@@ -70,14 +70,13 @@ fn main() -> anyhow::Result<()> {
         let _ = vtx2xy.set(&vtx2xy.as_tensor().sub(&(dw_vtx2xyz * 0.05)?)?);
         if iter % 100 == 0 {
             let vtx2xy: Vec<_> = vtx2xy.flatten_all()?.to_vec1::<f32>()?;
-            let hoge = del_msh::polyloop::to_cylinder_trimeshes(&vtx2xy, 2, 100.);
+            let hoge = del_msh_core::polyloop::to_cylinder_trimeshes(&vtx2xy, 2, 100.);
             // let _ = del_msh::io_obj::save_polyloop_(format!("target/polyloop_{}.obj", iter), &vtx2xy, 2);
-            let _ = del_msh::io_obj::save_tri2vtx_vtx2xyz(
+            del_msh_core::io_obj::save_tri2vtx_vtx2xyz(
                 format!("target/exaples-cubic_stylization_{}.obj", iter / 30),
                 &hoge.0,
                 &hoge.1,
-                3,
-            );
+                3)?;
         }
     }
     Ok(())

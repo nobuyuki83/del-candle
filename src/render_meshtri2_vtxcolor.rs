@@ -174,7 +174,7 @@ fn test_optimize_vtxcolor() -> anyhow::Result<()> {
     // transformation from xy to pixel coordinate
     let transform_xy2pix: [f32; 9] =
         del_canvas::cam2::transform_world2pix_ortho_preserve_asp(&img_shape, &[0.0, 0.0, 1.0, 1.0]);
-    let (tri2vtx, vtx2xyz) = del_msh::trimesh2_dynamic::meshing_from_polyloop2::<u32, f32>(
+    let (tri2vtx, vtx2xyz) = del_msh_core::trimesh2_dynamic::meshing_from_polyloop2::<u32, f32>(
         &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0],
         0.03,
         0.03,

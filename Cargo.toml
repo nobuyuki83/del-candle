@@ -16,11 +16,15 @@ rand = "0.8.5"
 image = "0.25.1"
 rayon = "1.10.0"
 #
-del-geo-core = { path = "../del-geo/del-geo-core"}
-del-geo-nalgebra = { path = "../del-geo/del-geo-nalgebra"}
-del-msh-core = { path = "../del-msh/del-msh-core"}
+#del-geo-core = { path = "../del-geo/del-geo-core"}
+#del-geo-nalgebra = { path = "../del-geo/del-geo-nalgebra"}
+#del-msh-core = { path = "../del-msh/del-msh-core"}
 del-canvas = { path = "../del-canvas"}
 del-fem = { path = "../del-fem"}
 #del-geo = "0.1.22"
 #del-msh = "0.1.28"
 #del-canvas = "0.1.1"
+
+del-geo-core = { git = "https://github.com/nobuyuki83/del-geo.git" }
+del-geo-nalgebra = { git = "https://github.com/nobuyuki83/del-geo.git" }
+del-msh-core = { git = "https://github.com/nobuyuki83/del-msh.git" }
