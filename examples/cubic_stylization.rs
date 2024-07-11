@@ -33,7 +33,7 @@ fn main() -> anyhow::Result<()> {
         let loops = svg_loops_from_outline_path(&strs);
         assert_eq!(loops.len(), 1);
         let vtx2xy = polybezier2polyloop(&loops[0].0, &loops[0].1, loops[0].2, 10.0);
-        let vtx2xy = del_msh_core::vtx2pos::from_array_of_nalgebra(&vtx2xy);
+        let vtx2xy = del_msh_core::vtx2xdim::from_array_of_nalgebra(&vtx2xy);
         del_msh_core::polyloop::resample::<_, 2>(&vtx2xy, 100)
     };
     let vtx2diff_ini = {
@@ -76,7 +76,8 @@ fn main() -> anyhow::Result<()> {
                 format!("target/exaples-cubic_stylization_{}.obj", iter / 30),
                 &hoge.0,
                 &hoge.1,
-                3)?;
+                3,
+            )?;
         }
     }
     Ok(())

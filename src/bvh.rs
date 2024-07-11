@@ -15,7 +15,7 @@ pub fn from_trimesh2(
         _ => panic!(),
     };
     let bvhnodes = del_msh_core::bvhnodes_morton::from_triangle_mesh::<u32>(tri2vtx, vtx2xy, 2);
-    let aabbs = del_msh_core::bvh2::aabbs_from_uniform_mesh::<u32, f32>(
+    let aabbs = del_msh_core::aabbs2::from_uniform_mesh_with_bvh::<u32, f32>(
         0,
         &bvhnodes,
         Some((tri2vtx, 3)),
@@ -52,10 +52,10 @@ pub fn from_trimesh3(
         _ => panic!(),
     };
     let bvhnodes = del_msh_core::bvhnodes_morton::from_triangle_mesh::<u32>(tri2vtx, vtx2xyz, 3);
-    let aabbs = del_msh_core::bvh3::aabbs_from_uniform_mesh::<u32, f32>(
+    let aabbs = del_msh_core::aabbs3::from_uniform_mesh_with_bvh::<u32, f32>(
         0,
         &bvhnodes,
-        Some((tri2vtx,3)),
+        Some((tri2vtx, 3)),
         vtx2xyz,
         None,
     );

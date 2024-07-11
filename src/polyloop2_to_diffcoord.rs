@@ -106,7 +106,8 @@ fn edge_length_constraint() -> anyhow::Result<()> {
             del_msh_core::io_obj::save_vtx2xyz_as_polyloop(
                 format!("target/polyloop_{}.obj", iter),
                 &vtx2xy,
-                2)?;
+                2,
+            )?;
         }
     }
     Ok(())

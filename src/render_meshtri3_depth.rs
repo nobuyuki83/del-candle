@@ -46,7 +46,7 @@ impl candle_core::CustomOp1 for Layer {
                 let (p0, p1, p2) =
                     del_msh_core::trimesh3::to_corner_points(tri2vtx, vtx2xyz, i_tri as usize);
                 let coeff =
-                    del_geo_core::tri3::ray_triangle_intersection_(&ray_org, &ray_dir, &p0, &p1, &p2)
+                    del_geo_core::tri3::intersection_against_ray(&p0, &p1, &p2, &ray_org, &ray_dir)
                         .unwrap();
                 // let q = del_geo::vec3::axpy_(coeff, &ray_dir, &ray_org);
                 pix2depth[i_h * self.img_shape.0 + i_w] = 1. - coeff;
@@ -104,7 +104,8 @@ impl candle_core::CustomOp1 for Layer {
                     &self.transform_nbc2world,
                 );
                 let i_tri = i_tri as usize;
-                let (p0, p1, p2) = del_msh_core::trimesh3::to_corner_points(tri2vtx, vtx2xyz, i_tri);
+                let (p0, p1, p2) =
+                    del_msh_core::trimesh3::to_corner_points(tri2vtx, vtx2xyz, i_tri);
                 let Some((_t, _u, _v, data)) = del_geo_nalgebra::tri3::ray_triangle_intersection(
                     &ray_org.into(),
                     &ray_dir.into(),
@@ -158,7 +159,7 @@ fn test_optimize_depth() -> anyhow::Result<()> {
         let mut img2mask = vec![0f32; img_shape.0 * img_shape.1];
         for i_h in 0..img_shape.1 {
             for i_w in 0..img_shape.0 {
-                let (ray_org, ray_dir) = del_canvas::cam3::ray3_homogeneous(
+                let (ray_org, _ray_dir) = del_canvas::cam3::ray3_homogeneous(
                     (i_w, i_h),
                     &img_shape,
                     &transform_ndc2world,
@@ -226,7 +227,8 @@ fn test_optimize_depth() -> anyhow::Result<()> {
                 format!("target/hoge_{}.obj", itr),
                 &tri2vtx,
                 &vtx2xyz,
-                3)?;
+                3,
+            )?;
         }
     }
     Ok(())

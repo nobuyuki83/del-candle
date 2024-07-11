@@ -84,8 +84,12 @@ impl candle_core::CustomOp1 for crate::voronoi2::Layer {
                 let i1_site = info[2];
                 let s0 = del_msh_core::vtx2xy::to_navec2(site2xy, i0_site);
                 let s1 = del_msh_core::vtx2xy::to_navec2(site2xy, i1_site);
-                let (_r, drds0, drds1) =
-                    del_geo_nalgebra::line2::dw_intersection_against_bisector(&l1, &(l2 - l1), &s0, &s1);
+                let (_r, drds0, drds1) = del_geo_nalgebra::line2::dw_intersection_against_bisector(
+                    &l1,
+                    &(l2 - l1),
+                    &s0,
+                    &s1,
+                );
                 let dv = del_msh_core::vtx2xy::to_navec2(dw_vtxv2xy, i_vtxv);
                 {
                     let ds0 = drds0.transpose() * dv;
@@ -147,8 +151,12 @@ fn test_backward() -> anyhow::Result<()> {
             &voronoi_info0.idx2vtxv,
             vtx2xy.len() / 2,
         );
-        let _ =
-            del_msh_core::io_obj::save_edge2vtx_vtx2xyz("target/voronoi0.obj", &edge2vtxv, &vtx2xy, 2);
+        let _ = del_msh_core::io_obj::save_edge2vtx_vtx2xyz(
+            "target/voronoi0.obj",
+            &edge2vtxv,
+            &vtx2xy,
+            2,
+        );
     }
     let vtxv2xygoal =
         candle_core::Tensor::randn(1f32, 1f32, vtxv2xy0.shape(), &candle_core::Device::Cpu)?;

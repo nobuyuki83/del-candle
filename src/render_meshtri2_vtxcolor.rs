@@ -1,5 +1,6 @@
 use candle_core::{CpuStorage, Layout, Shape, Tensor};
 use std::ops::Deref;
+use std::time::Instant;
 
 struct Layer {
     tri2vtx: candle_core::Tensor,
@@ -55,7 +56,8 @@ impl candle_core::CustomOp1 for Layer {
                 .unwrap();
                 let (p0, p1, p2) =
                     del_msh_core::trimesh2::to_corner_points(tri2vtx, vtx2xy, i_tri as usize);
-                let Some((r0, r1, r2)) = del_geo_core::tri2::barycentric_coords(&p0, &p1, &p2, &p_xy)
+                let Some((r0, r1, r2)) =
+                    del_geo_core::tri2::barycentric_coords(&p0, &p1, &p2, &p_xy)
                 else {
                     continue;
                 };
@@ -128,7 +130,8 @@ impl candle_core::CustomOp1 for Layer {
                 .unwrap();
                 let (p0, p1, p2) =
                     del_msh_core::trimesh2::to_corner_points(tri2vtx, vtx2xy, i_tri as usize);
-                let Some((r0, r1, r2)) = del_geo_core::tri2::barycentric_coords(&p0, &p1, &p2, &p_xy)
+                let Some((r0, r1, r2)) =
+                    del_geo_core::tri2::barycentric_coords(&p0, &p1, &p2, &p_xy)
                 else {
                     continue;
                 };
@@ -221,6 +224,7 @@ fn test_optimize_vtxcolor() -> anyhow::Result<()> {
     };
     dbg!(&vtx2color.shape());
 
+    let now = Instant::now();
     for i_itr in 0..100 {
         let render = Layer {
             tri2vtx: tri2vtx.clone(),
@@ -230,13 +234,9 @@ fn test_optimize_vtxcolor() -> anyhow::Result<()> {
             transform_xy2pix,
         };
         let img_out = vtx2color.apply_op1(render)?;
-        // dbg!(&img_out.shape());
         let diff = img_trg.sub(&img_out).unwrap().sqr()?.sum_all()?;
-        // dbg!(&diff.shape());
-        // dbg!(diff.to_vec0::<f32>().unwrap());
         let grad = diff.backward()?;
         let dw_vtx2color = grad.get(&vtx2color).unwrap();
-        // dbg!(dw_vtx2color.dims2().unwrap());
         if i_itr % 10 == 0 {
             let img_out_vec: Vec<f32> = img_out.flatten_all()?.to_vec1()?;
             del_canvas::write_png_from_float_image(
@@ -250,5 +250,6 @@ fn test_optimize_vtxcolor() -> anyhow::Result<()> {
         }
         let _ = vtx2color.set(&vtx2color.as_tensor().sub(&(dw_vtx2color * 0.003)?)?);
     }
+    println!("Elapsed: {:.2?}", now.elapsed());
     Ok(())
 }
