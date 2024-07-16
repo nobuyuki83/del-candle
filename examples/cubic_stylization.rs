@@ -43,7 +43,7 @@ fn main() -> anyhow::Result<()> {
             &candle_core::Device::Cpu,
         )
         .unwrap();
-        let polyloop_to_diffcoord = del_candle::polyloop2_to_diffcoord::Layer {};
+        let polyloop_to_diffcoord = del_candle::diffcoord_polyloop2::Layer {};
         vtx2xy.apply_op1(polyloop_to_diffcoord)?
     };
     let vtx2xy = candle_core::Var::from_slice(
@@ -57,7 +57,7 @@ fn main() -> anyhow::Result<()> {
         let edge2vtx = del_msh_core::polyloop::edge2vtx(vtx2xy.dims2()?.0);
         let unorm_diff = del_candle::cubic_stylization::loss(&vtx2xy, &edge2vtx)?;
         //
-        let polyloop_to_diffcoord = del_candle::polyloop2_to_diffcoord::Layer {};
+        let polyloop_to_diffcoord = del_candle::diffcoord_polyloop2::Layer {};
         let magdiffc = vtx2xy
             .apply_op1(polyloop_to_diffcoord)?
             .sub(&vtx2diff_ini)?

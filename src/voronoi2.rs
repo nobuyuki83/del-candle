@@ -117,7 +117,7 @@ impl candle_core::CustomOp1 for crate::voronoi2::Layer {
                 }
             }
         }
-        let dw_site2xy = candle_core::Tensor::from_vec(
+        let dw_site2xy = Tensor::from_vec(
             dw_site2xy,
             candle_core::Shape::from((num_site, 2)),
             &candle_core::Device::Cpu,
@@ -176,7 +176,7 @@ fn test_backward() -> anyhow::Result<()> {
                 site2xy0.shape(),
                 &candle_core::Device::Cpu,
             )?;
-            let site2_to_voronoi2 = crate::voronoi2::Layer {
+            let site2_to_voronoi2 = Layer {
                 vtxl2xy: vtxl2xy.clone(),
                 vtxv2info: voronoi_info0.vtxv2info.clone(),
             };

@@ -147,6 +147,11 @@ impl candle_core::CustomOp1 for Layer {
 #[test]
 fn test_optimize_depth() -> anyhow::Result<()> {
     let (tri2vtx, vtx2xyz) = del_msh_core::trimesh3_primitive::sphere_yup::<u32, f32>(0.8, 32, 32);
+    let vtx2xyz = {
+        let mut vtx2xyz_new = vtx2xyz.clone();
+        del_msh_core::vtx2xyz::translate_and_scale(&mut vtx2xyz_new, &vtx2xyz, &[0.2, 0.0, 0.0], 1.0);
+        vtx2xyz_new
+    };
     let num_tri = tri2vtx.len() / 3;
     let tri2vtx = Tensor::from_vec(tri2vtx, (num_tri, 3), &candle_core::Device::Cpu)?;
     let num_vtx = vtx2xyz.len() / 3;
@@ -190,7 +195,12 @@ fn test_optimize_depth() -> anyhow::Result<()> {
         del_canvas::write_png_from_float_image("target/pix2mask.png", &img_shape, &pix2mask);
     }
 
-    for itr in 0..30 {
+    let mut optimizer = crate::gd_with_laplacian_reparam::Optimizer::new(
+        vtx2xyz.clone(), 0.01, tri2vtx.clone(), vtx2xyz.dims2()?.0, 0.1)?;
+
+    // let mut optimizer = candle_nn::AdamW::new_lr(vec!(vtx2xyz.clone()), 0.01)?;
+
+    for itr in 0..100 {
         let (bvhnodes, aabbs) = crate::bvh::from_trimesh3(&tri2vtx, &vtx2xyz)?;
         let pix2tri = crate::raycast_trimesh::raycast3(
             &tri2vtx,
@@ -212,14 +222,12 @@ fn test_optimize_depth() -> anyhow::Result<()> {
         {
             let pix2depth = pix2depth.flatten_all()?.to_vec1::<f32>()?;
             del_canvas::write_png_from_float_image("target/pix2depth.png", &img_shape, &pix2depth);
-            let pix2diff = pix2diff.flatten_all()?.to_vec1::<f32>()?;
+            let pix2diff = (pix2diff.clone()*10.0)?.abs()?.flatten_all()?.to_vec1::<f32>()?;
             del_canvas::write_png_from_float_image("target/pix2diff.png", &img_shape, &pix2diff);
         }
         let loss = pix2diff.sqr()?.sum_all()?;
         println!("loss: {}", loss.to_vec0::<f32>()?);
-        let grad = loss.backward()?;
-        let dw_vtx2xyz = grad.get(&vtx2xyz).unwrap();
-        let _ = vtx2xyz.set(&vtx2xyz.as_tensor().sub(&(dw_vtx2xyz * 0.01)?)?);
+        optimizer.step(&loss.backward()?)?;
         {
             let vtx2xyz = vtx2xyz.flatten_all()?.to_vec1::<f32>()?;
             let tri2vtx = tri2vtx.flatten_all()?.to_vec1::<u32>()?;

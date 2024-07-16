@@ -12,7 +12,6 @@ impl candle_core::CustomOp1 for crate::polygonmesh2_to_cogs::Layer {
         "polygonmesh2_to_cogs"
     }
 
-    #[allow(clippy::identity_op)]
     fn cpu_fwd(
         &self,
         storage: &CpuStorage,
@@ -35,7 +34,6 @@ impl candle_core::CustomOp1 for crate::polygonmesh2_to_cogs::Layer {
     /// This function takes as argument the argument `arg` used in the forward pass, the result
     /// produced by the forward operation `res` and the gradient of the result `grad_res`.
     /// The function should return the gradient of the argument.
-    #[allow(clippy::identity_op)]
     fn bwd(
         &self,
         vtx2xy: &Tensor,

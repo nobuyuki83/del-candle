@@ -4,7 +4,7 @@ use candle_core::{CpuStorage, Layout, Shape, Tensor};
 
 pub struct Layer {}
 
-impl candle_core::CustomOp1 for crate::polyloop2_to_diffcoord::Layer {
+impl candle_core::CustomOp1 for crate::diffcoord_polyloop2::Layer {
     fn name(&self) -> &'static str {
         "polyloop to diffcoord"
     }
@@ -60,7 +60,7 @@ impl candle_core::CustomOp1 for crate::polyloop2_to_diffcoord::Layer {
                 dw_vtx2xy[i2_vtx * 2 + i_dim] -= 0.5 * dw_vtx2diff[i1_vtx * 2 + i_dim];
             }
         }
-        let dw_vtx2xy = candle_core::Tensor::from_vec(
+        let dw_vtx2xy = Tensor::from_vec(
             dw_vtx2xy,
             candle_core::Shape::from((num_vtx, 2)),
             &candle_core::Device::Cpu,
@@ -90,7 +90,7 @@ fn edge_length_constraint() -> anyhow::Result<()> {
         .unwrap()
     };
     for iter in 0..200 {
-        let render = crate::polyloop2_to_diffcoord::Layer {};
+        let render = Layer {};
         let vtx2diff = vtx2xy.apply_op1(render)?;
         assert_eq!(vtx2diff.shape(), vtx2xy.shape());
         let loss_straight = vtx2diff.sqr()?.sum_all()?;

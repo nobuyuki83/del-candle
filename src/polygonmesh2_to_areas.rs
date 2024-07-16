@@ -1,13 +1,14 @@
 use std::ops::Deref;
 
 use candle_core::{CpuStorage, Layout, Shape, Tensor};
+use crate::perturb_tensor::puturb_2d_tensor;
 
 pub struct Layer {
     pub elem2idx: Vec<usize>,
     pub idx2vtx: Vec<usize>,
 }
 
-impl candle_core::CustomOp1 for crate::polygonmesh2_to_areas::Layer {
+impl candle_core::CustomOp1 for Layer {
     fn name(&self) -> &'static str {
         "polyloop2_to_area"
     }
@@ -63,7 +64,7 @@ impl candle_core::CustomOp1 for crate::polygonmesh2_to_areas::Layer {
                 dw_vtx2xy[i1_vtx * 2 + 0] -= 0.5f32 * vtx2xy[i0_vtx * 2 + 1] * dw_area[i_elem];
             }
         }
-        let dw_vtx2xy = candle_core::Tensor::from_vec(
+        let dw_vtx2xy = Tensor::from_vec(
             dw_vtx2xy,
             candle_core::Shape::from((num_vtx, 2)),
             &candle_core::Device::Cpu,
@@ -86,7 +87,7 @@ fn test_backward() -> anyhow::Result<()> {
     };
     let elem2idx = vec![0, num_vtx];
     let idx2vtx: Vec<usize> = (0..num_vtx).map(|v| v).collect();
-    let render = crate::polygonmesh2_to_areas::Layer {
+    let render = Layer {
         elem2idx: elem2idx.clone(),
         idx2vtx: idx2vtx.clone(),
     };
@@ -99,10 +100,10 @@ fn test_backward() -> anyhow::Result<()> {
     {
         // add perturbation
         let rand0 =
-            &candle_core::Tensor::randn(1f32, 1f32, (num_vtx, 2), &candle_core::Device::Cpu)?;
+            &Tensor::randn(1f32, 1f32, (num_vtx, 2), &candle_core::Device::Cpu)?;
         vtx2xy.add(&rand0)?;
     }
-    let render = crate::polygonmesh2_to_areas::Layer {
+    let render = Layer {
         elem2idx: elem2idx.clone(),
         idx2vtx: idx2vtx.clone(),
     };
@@ -114,11 +115,8 @@ fn test_backward() -> anyhow::Result<()> {
     let eps = 1.0e-2f32;
     for i_vtx in 0..num_vtx {
         for i_dim in 0..2 {
-            let mut vtx2xy1 = vtx2xy.clone().flatten_all()?.to_vec1::<f32>()?;
-            vtx2xy1[i_vtx * 2 + i_dim] += eps;
-            let vtx2xy1 =
-                candle_core::Tensor::from_vec(vtx2xy1, (num_vtx, 2), &candle_core::Device::Cpu)?;
-            let render = crate::polygonmesh2_to_areas::Layer {
+            let vtx2xy1 = puturb_2d_tensor(&vtx2xy, i_vtx, i_dim, eps.into())?;
+            let render = Layer {
                 elem2idx: elem2idx.clone(),
                 idx2vtx: idx2vtx.clone(),
             };
@@ -154,7 +152,7 @@ fn area_constraint() -> anyhow::Result<()> {
     let elem2idx = vec![0, num_vtx];
     let idx2vtx: Vec<usize> = (0..num_vtx).map(|v| v).collect();
     for iter in 0..200 {
-        let render = crate::polygonmesh2_to_areas::Layer {
+        let render = Layer {
             elem2idx: elem2idx.clone(),
             idx2vtx: idx2vtx.clone(),
         };

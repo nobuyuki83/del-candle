@@ -21,6 +21,7 @@ del-geo-nalgebra = { path = "../del-geo/del-geo-nalgebra"}
 del-msh-core = { path = "../del-msh/del-msh-core"}
 del-canvas = { path = "../del-canvas"}
 del-fem = { path = "../del-fem"}
+del-ls = { path = "../del-ls" }
 #del-geo = "0.1.22"
 #del-msh = "0.1.28"
 #del-canvas = "0.1.1"

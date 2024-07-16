@@ -1,3 +1,5 @@
+use crate::perturb_tensor::puturb_2d_tensor;
+
 struct Layer {
     tri2vtx: candle_core::Tensor,
 }
@@ -115,13 +117,10 @@ fn test_backward() -> anyhow::Result<()> {
     let loss0 = loss0.to_vec0::<f32>()?;
     let dw_vtx2xyz = grad.get(&vtx2xyz0).unwrap();
     let dw_vtx2xyz = dw_vtx2xyz.flatten_all()?.to_vec1::<f32>()?;
-    let eps = 1.0e-2;
+    let eps: f32 = 1.0e-2;
     for i_vtx in 0..num_vtx {
         for i_dim in 0..3 {
-            let mut vtx2xyz1 = vtx2xyz0.clone().flatten_all()?.to_vec1::<f32>()?;
-            vtx2xyz1[i_vtx * 3 + i_dim] += eps;
-            let vtx2xyz1 =
-                candle_core::Tensor::from_vec(vtx2xyz1, (num_vtx, 3), &candle_core::Device::Cpu)?;
+            let vtx2xyz1 = puturb_2d_tensor(&vtx2xyz0, i_vtx, i_dim, eps as f64)?;
             let ln = Layer {
                 tri2vtx: tri2vtx.clone(),
             }; // cheap

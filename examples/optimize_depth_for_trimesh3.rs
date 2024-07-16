@@ -11,7 +11,7 @@ fn main() -> anyhow::Result<()> {
     let lambda = 1.;
     let mut ls = {
         let tri2vtx: Vec<usize> = tri2vtx.iter().map(|v| *v as usize).collect();
-        let mut ls = del_fem::laplace_tri3::to_linearsystem(&tri2vtx, &vtx2xyz, 1., lambda);
+        let ls = del_fem::laplace_tri3::to_linearsystem(&tri2vtx, vtx2xyz.len() / 3, 1., lambda);
         ls
     };
 
