@@ -149,7 +149,7 @@ fn test_optimize_depth() -> anyhow::Result<()> {
     let (tri2vtx, vtx2xyz) = del_msh_core::trimesh3_primitive::sphere_yup::<u32, f32>(0.8, 32, 32);
     let vtx2xyz = {
         let mut vtx2xyz_new = vtx2xyz.clone();
-        del_msh_core::vtx2xyz::translate_and_scale(&mut vtx2xyz_new, &vtx2xyz, &[0.2, 0.0, 0.0], 1.0);
+        del_msh_core::vtx2xyz::translate_then_scale(&mut vtx2xyz_new, &vtx2xyz, &[0.2, 0.0, 0.0], 1.0);
         vtx2xyz_new
     };
     let num_tri = tri2vtx.len() / 3;
@@ -158,7 +158,7 @@ fn test_optimize_depth() -> anyhow::Result<()> {
     let vtx2xyz = candle_core::Var::from_vec(vtx2xyz, (num_vtx, 3), &candle_core::Device::Cpu)?;
     let img_shape = (200, 200);
     //
-    let transform_ndc2world = del_geo_core::mat4::identity::<f32>();
+    let transform_ndc2world = del_geo_core::mat4_col_major::identity::<f32>();
     let (pix2depth_trg, pix2mask) = {
         let mut img2depth_trg = vec![0f32; img_shape.0 * img_shape.1];
         let mut img2mask = vec![0f32; img_shape.0 * img_shape.1];
@@ -185,14 +185,14 @@ fn test_optimize_depth() -> anyhow::Result<()> {
     };
     {
         let pix2depth_trg = pix2depth_trg.flatten_all()?.to_vec1::<f32>()?;
-        del_canvas::write_png_from_float_image(
+        del_canvas::write_png_from_float_image_grayscale(
             "target/pix2depth_trg.png",
             &img_shape,
             &pix2depth_trg,
         );
         //
         let pix2mask = pix2mask.flatten_all()?.to_vec1::<f32>()?;
-        del_canvas::write_png_from_float_image("target/pix2mask.png", &img_shape, &pix2mask);
+        del_canvas::write_png_from_float_image_grayscale("target/pix2mask.png", &img_shape, &pix2mask);
     }
 
     let mut optimizer = crate::gd_with_laplacian_reparam::Optimizer::new(
@@ -221,9 +221,9 @@ fn test_optimize_depth() -> anyhow::Result<()> {
         let pix2diff = pix2depth.sub(&pix2depth_trg)?.mul(&pix2mask)?;
         {
             let pix2depth = pix2depth.flatten_all()?.to_vec1::<f32>()?;
-            del_canvas::write_png_from_float_image("target/pix2depth.png", &img_shape, &pix2depth);
+            del_canvas::write_png_from_float_image_grayscale("target/pix2depth.png", &img_shape, &pix2depth);
             let pix2diff = (pix2diff.clone()*10.0)?.abs()?.flatten_all()?.to_vec1::<f32>()?;
-            del_canvas::write_png_from_float_image("target/pix2diff.png", &img_shape, &pix2diff);
+            del_canvas::write_png_from_float_image_grayscale("target/pix2diff.png", &img_shape, &pix2diff);
         }
         let loss = pix2diff.sqr()?.sum_all()?;
         println!("loss: {}", loss.to_vec0::<f32>()?);

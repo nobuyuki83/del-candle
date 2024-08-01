@@ -11,7 +11,7 @@ fn main() -> anyhow::Result<()> {
     let lambda = 1.;
     let mut ls = {
         let tri2vtx: Vec<usize> = tri2vtx.iter().map(|v| *v as usize).collect();
-        let ls = del_fem::laplace_tri3::to_linearsystem(&tri2vtx, vtx2xyz.len() / 3, 1., lambda);
+        let ls = del_fem_core::laplace_tri3::to_linearsystem(&tri2vtx, vtx2xyz.len() / 3, 1., lambda);
         ls
     };
 
@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     let vtx2xyz = candle_core::Var::from_vec(vtx2xyz, (num_vtx, 3), &candle_core::Device::Cpu)?;
     let img_shape = (300, 300);
     //
-    let transform_ndc2world = del_geo_core::mat4::identity::<f32>();
+    let transform_ndc2world = del_geo_core::mat4_col_major::identity::<f32>();
     let (pix2depth_trg, pix2mask) = {
         let mut img2depth_trg = vec![0f32; img_shape.0 * img_shape.1];
         let mut img2mask = vec![0f32; img_shape.0 * img_shape.1];
@@ -48,14 +48,14 @@ fn main() -> anyhow::Result<()> {
     };
     {
         let pix2depth_trg = pix2depth_trg.flatten_all()?.to_vec1::<f32>()?;
-        del_canvas::write_png_from_float_image(
+        del_canvas::write_png_from_float_image_grayscale(
             "target/pix2depth_trg.png",
             &img_shape,
             &pix2depth_trg,
         );
         //
         let pix2mask = pix2mask.flatten_all()?.to_vec1::<f32>()?;
-        del_canvas::write_png_from_float_image("target/pix2mask.png", &img_shape, &pix2mask);
+        del_canvas::write_png_from_float_image_grayscale("target/pix2mask.png", &img_shape, &pix2mask);
     }
 
     let now = Instant::now();

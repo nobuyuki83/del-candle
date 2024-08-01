@@ -42,14 +42,14 @@ impl candle_core::CustomOp1 for Layer {
             _ => panic!(),
         };
         let mut img = vec![0f32; self.img_shape.0 * self.img_shape.1];
-        let transform_pix2xy = del_geo_core::mat3::try_inverse(&self.transform_xy2pix).unwrap();
+        let transform_pix2xy = del_geo_core::mat3_col_major::try_inverse(&self.transform_xy2pix).unwrap();
         for i_h in 0..self.img_shape.1 {
             for i_w in 0..self.img_shape.0 {
                 let i_tri = img2tri[i_h * self.img_shape.0 + i_w];
                 if i_tri == u32::MAX {
                     continue;
                 }
-                let p_xy = del_geo_core::mat3::transform_homogeneous::<f32>(
+                let p_xy = del_geo_core::mat3_col_major::transform_homogeneous::<f32>(
                     &transform_pix2xy,
                     &[i_w as f32 + 0.5, i_h as f32 + 0.5],
                 )
@@ -116,14 +116,14 @@ impl candle_core::CustomOp1 for Layer {
         assert_eq!(dw_pix2color.len(), height * width * num_channels);
         //
         let mut dw_vtx2color = vec![0f32; num_vtx * num_channels];
-        let transform_pix2xy = del_geo_core::mat3::try_inverse(&self.transform_xy2pix).unwrap();
+        let transform_pix2xy = del_geo_core::mat3_col_major::try_inverse(&self.transform_xy2pix).unwrap();
         for i_h in 0..height {
             for i_w in 0..width {
                 let i_tri = pix2tri[i_h * self.img_shape.0 + i_w];
                 if i_tri == u32::MAX {
                     continue;
                 }
-                let p_xy = del_geo_core::mat3::transform_homogeneous(
+                let p_xy = del_geo_core::mat3_col_major::transform_homogeneous(
                     &transform_pix2xy,
                     &[i_w as f32 + 0.5, i_h as f32 + 0.5],
                 )
@@ -239,7 +239,7 @@ fn test_optimize_vtxcolor() -> anyhow::Result<()> {
         let dw_vtx2color = grad.get(&vtx2color).unwrap();
         if i_itr % 10 == 0 {
             let img_out_vec: Vec<f32> = img_out.flatten_all()?.to_vec1()?;
-            del_canvas::write_png_from_float_image(
+            del_canvas::write_png_from_float_image_grayscale(
                 format!(
                     "target/render_meshtri2_vtxcolor-test_optimize_vtxcolor_{}.png",
                     i_itr

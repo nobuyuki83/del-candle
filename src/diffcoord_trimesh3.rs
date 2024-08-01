@@ -5,8 +5,8 @@ use candle_core::Device::Cpu;
 use crate::perturb_tensor::puturb_2d_tensor;
 
 pub struct Layer {
-    vtx2idx: Tensor,
-    idx2vtx: Tensor
+    pub vtx2idx: Tensor,
+    pub idx2vtx: Tensor
 }
 
 impl candle_core::CustomOp1 for Layer {

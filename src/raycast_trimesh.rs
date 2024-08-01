@@ -32,10 +32,10 @@ pub fn raycast2(
         _ => panic!(),
     };
     let mut img = vec![u32::MAX; img_shape.0 * img_shape.1];
-    let transform_pix2xy = del_geo_core::mat3::try_inverse(transform_xy2pix).unwrap();
+    let transform_pix2xy = del_geo_core::mat3_col_major::try_inverse(transform_xy2pix).unwrap();
     for i_h in 0..img_shape.1 {
         for i_w in 0..img_shape.0 {
-            let p_xy = del_geo_core::mat3::transform_homogeneous(
+            let p_xy = del_geo_core::mat3_col_major::transform_homogeneous(
                 &transform_pix2xy,
                 &[i_w as f32 + 0.5, i_h as f32 + 0.5],
             )
@@ -84,35 +84,7 @@ pub fn raycast3(
         candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<u32>()?,
         _ => panic!(),
     };
-    let tri_for_pix = |i_pix: usize| {
-        let i_h = i_pix / img_shape.0;
-        let i_w = i_pix - i_h * img_shape.0;
-        //
-        let (ray_org, ray_dir) =
-            del_canvas::cam3::ray3_homogeneous((i_w, i_h), img_shape, transform_ndc2world);
-        let mut hits: Vec<(f32, usize)> = vec![];
-        del_msh_core::bvh3::search_intersection_ray::<u32>(
-            &mut hits,
-            &ray_org,
-            &ray_dir,
-            &del_msh_core::bvh3::TriMeshWithBvh {
-                tri2vtx,
-                vtx2xyz,
-                bvhnodes,
-                aabbs,
-            },
-            0,
-        );
-        hits.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-        let Some(&(_depth, i_tri)) = hits.first() else {
-            return u32::MAX;
-        };
-        i_tri as u32
-    };
-    let img: Vec<u32> = (0..img_shape.0 * img_shape.1)
-        .into_par_iter()
-        .map(tri_for_pix)
-        .collect();
+    let img = del_canvas::raycast_trimesh3::pix2tri(tri2vtx, vtx2xyz, bvhnodes, aabbs, img_shape, transform_ndc2world);
     let img = candle_core::Tensor::from_vec(img, *img_shape, &candle_core::Device::Cpu)?;
     Ok(img)
 }

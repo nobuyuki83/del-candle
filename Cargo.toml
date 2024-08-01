@@ -20,7 +20,7 @@ del-geo-core = { path = "../del-geo/del-geo-core"}
 del-geo-nalgebra = { path = "../del-geo/del-geo-nalgebra"}
 del-msh-core = { path = "../del-msh/del-msh-core"}
 del-canvas = { path = "../del-canvas"}
-del-fem = { path = "../del-fem"}
+del-fem-core = { path = "../del-fem/del-fem-core"}
 del-ls = { path = "../del-ls" }
 #del-geo = "0.1.22"
 #del-msh = "0.1.28"
