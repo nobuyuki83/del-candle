@@ -59,7 +59,7 @@ impl candle_core::CustomOp1 for crate::polygonmesh2_to_cogs::Layer {
             };
             for i_edge in 0..num_vtx_in_elem {
                 let i0_vtx = self.idx2vtx[self.elem2idx[i_elem] + i_edge];
-                dw_vtx2xy[i0_vtx * 2 + 0] += ratio * dw_elem2cog[i_elem * 2 + 0];
+                dw_vtx2xy[i0_vtx * 2] += ratio * dw_elem2cog[i_elem * 2];
                 dw_vtx2xy[i0_vtx * 2 + 1] += ratio * dw_elem2cog[i_elem * 2 + 1];
             }
         }

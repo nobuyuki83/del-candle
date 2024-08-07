@@ -1,4 +1,3 @@
-use rayon::prelude::*;
 use std::ops::Deref;
 
 pub fn raycast2(

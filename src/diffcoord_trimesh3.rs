@@ -2,7 +2,6 @@ use std::ops::Deref;
 
 use candle_core::{CpuStorage, Layout, Shape, Tensor};
 use candle_core::Device::Cpu;
-use crate::perturb_tensor::puturb_2d_tensor;
 
 pub struct Layer {
     pub vtx2idx: Tensor,
@@ -83,11 +82,11 @@ impl candle_core::CustomOp1 for Layer {
             let idx1 = vtx2idx[i_vtx+1] as usize;
             for &j_vtx in &idx2vtx[idx0..idx1] {
                 let j_vtx = j_vtx as usize;
-                dw_vtx2xyz[j_vtx * 3 + 0] -= velence_inv * dw_vtx2diff[i_vtx * 3 + 0];
+                dw_vtx2xyz[j_vtx * 3] -= velence_inv * dw_vtx2diff[i_vtx * 3];
                 dw_vtx2xyz[j_vtx * 3 + 1] -= velence_inv * dw_vtx2diff[i_vtx * 3 + 1];
                 dw_vtx2xyz[j_vtx * 3 + 2] -= velence_inv * dw_vtx2diff[i_vtx * 3 + 2];
             }
-            dw_vtx2xyz[i_vtx * 3 + 0] += dw_vtx2diff[i_vtx * 3 + 0];
+            dw_vtx2xyz[i_vtx * 3] += dw_vtx2diff[i_vtx * 3];
             dw_vtx2xyz[i_vtx * 3 + 1] += dw_vtx2diff[i_vtx * 3 + 1];
             dw_vtx2xyz[i_vtx * 3 + 2] += dw_vtx2diff[i_vtx * 3 + 2];
         }

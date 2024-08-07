@@ -1,6 +1,5 @@
-use crate::perturb_tensor::puturb_2d_tensor;
 
-struct Layer {
+pub struct Layer {
     tri2vtx: candle_core::Tensor,
 }
 

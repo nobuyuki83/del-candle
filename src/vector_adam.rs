@@ -32,8 +32,7 @@ impl Optimizer {
     ) -> candle_core::Result<Self> {
         let ls = {
             let tri2vtx: Vec<usize> = tri2vtx.flatten_all()?.to_vec1::<u32>()?.iter().map(|v| *v as usize).collect();
-            let ls = del_fem_core::laplace_tri3::to_linearsystem(&tri2vtx, num_vtx, 1., lambda as f32);
-            ls
+            del_fem_core::laplace_tri3::to_linearsystem(&tri2vtx, num_vtx, 1., lambda as f32)
         };
         let adam_params = crate::vector_adam::ParamsAdam {
             lr: learning_rate,

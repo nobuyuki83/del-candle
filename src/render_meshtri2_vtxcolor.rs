@@ -1,8 +1,7 @@
 use candle_core::{CpuStorage, Layout, Shape, Tensor};
 use std::ops::Deref;
-use std::time::Instant;
 
-struct Layer {
+pub struct Layer {
     tri2vtx: candle_core::Tensor,
     vtx2xy: candle_core::Tensor,
     pix2tri: candle_core::Tensor,

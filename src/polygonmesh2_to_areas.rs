@@ -1,7 +1,6 @@
 use std::ops::Deref;
 
 use candle_core::{CpuStorage, Layout, Shape, Tensor};
-use crate::perturb_tensor::puturb_2d_tensor;
 
 pub struct Layer {
     pub elem2idx: Vec<usize>,
