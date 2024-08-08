@@ -41,7 +41,8 @@ impl candle_core::CustomOp1 for Layer {
             _ => panic!(),
         };
         let mut img = vec![0f32; self.img_shape.0 * self.img_shape.1];
-        let transform_pix2xy = del_geo_core::mat3_col_major::try_inverse(&self.transform_xy2pix).unwrap();
+        let transform_pix2xy =
+            del_geo_core::mat3_col_major::try_inverse(&self.transform_xy2pix).unwrap();
         for i_h in 0..self.img_shape.1 {
             for i_w in 0..self.img_shape.0 {
                 let i_tri = img2tri[i_h * self.img_shape.0 + i_w];
@@ -115,7 +116,8 @@ impl candle_core::CustomOp1 for Layer {
         assert_eq!(dw_pix2color.len(), height * width * num_channels);
         //
         let mut dw_vtx2color = vec![0f32; num_vtx * num_channels];
-        let transform_pix2xy = del_geo_core::mat3_col_major::try_inverse(&self.transform_xy2pix).unwrap();
+        let transform_pix2xy =
+            del_geo_core::mat3_col_major::try_inverse(&self.transform_xy2pix).unwrap();
         for i_h in 0..height {
             for i_w in 0..width {
                 let i_tri = pix2tri[i_h * self.img_shape.0 + i_w];
@@ -223,7 +225,7 @@ fn test_optimize_vtxcolor() -> anyhow::Result<()> {
     };
     dbg!(&vtx2color.shape());
 
-    let now = Instant::now();
+    let now = std::time::Instant::now();
     for i_itr in 0..100 {
         let render = Layer {
             tri2vtx: tri2vtx.clone(),

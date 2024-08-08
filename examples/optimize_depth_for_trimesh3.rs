@@ -11,7 +11,8 @@ fn main() -> anyhow::Result<()> {
     let lambda = 1.;
     let mut ls = {
         let tri2vtx: Vec<usize> = tri2vtx.iter().map(|v| *v as usize).collect();
-        let ls = del_fem_core::laplace_tri3::to_linearsystem(&tri2vtx, vtx2xyz.len() / 3, 1., lambda);
+        let ls =
+            del_fem_core::laplace_tri3::to_linearsystem(&tri2vtx, vtx2xyz.len() / 3, 1., lambda);
         ls
     };
 
@@ -55,7 +56,11 @@ fn main() -> anyhow::Result<()> {
         );
         //
         let pix2mask = pix2mask.flatten_all()?.to_vec1::<f32>()?;
-        del_canvas::write_png_from_float_image_grayscale("target/pix2mask.png", &img_shape, &pix2mask);
+        del_canvas::write_png_from_float_image_grayscale(
+            "target/pix2mask.png",
+            &img_shape,
+            &pix2mask,
+        );
     }
 
     let now = Instant::now();

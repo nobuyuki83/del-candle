@@ -16,7 +16,7 @@ pub struct Optimizer {
     m: Tensor,
     v: Tensor,
     params: ParamsAdam,
-    ls:  del_ls::linearsystem::Solver<f32>,
+    ls: del_ls::linearsystem::Solver<f32>,
     t: f64,
     pub tri2vtx: candle_core::Tensor,
     pub lambda: f64,
@@ -28,10 +28,15 @@ impl Optimizer {
         learning_rate: f64,
         tri2vtx: candle_core::Tensor,
         num_vtx: usize,
-        lambda: f64
+        lambda: f64,
     ) -> candle_core::Result<Self> {
         let ls = {
-            let tri2vtx: Vec<usize> = tri2vtx.flatten_all()?.to_vec1::<u32>()?.iter().map(|v| *v as usize).collect();
+            let tri2vtx: Vec<usize> = tri2vtx
+                .flatten_all()?
+                .to_vec1::<u32>()?
+                .iter()
+                .map(|v| *v as usize)
+                .collect();
             del_fem_core::laplace_tri3::to_linearsystem(&tri2vtx, num_vtx, 1., lambda as f32)
         };
         let adam_params = crate::vector_adam::ParamsAdam {
@@ -44,7 +49,7 @@ impl Optimizer {
         assert!(dtype.is_float());
         let shape = var.shape();
         let m = Tensor::zeros(shape, dtype, &candle_core::Device::Cpu)?;
-        let v = Tensor::zeros((shape.dims2()?.0,1), dtype, &candle_core::Device::Cpu)?;
+        let v = Tensor::zeros((shape.dims2()?.0, 1), dtype, &candle_core::Device::Cpu)?;
         // let v = Var::zeros(shape, dtype, &candle_core::Device::Cpu)?;
         let adm = Optimizer {
             vtx2xyz: var,
@@ -54,7 +59,7 @@ impl Optimizer {
             t: 1.,
             ls,
             tri2vtx,
-            lambda
+            lambda,
         };
         Ok(adm)
     }
@@ -68,23 +73,31 @@ impl Optimizer {
             let grad = {
                 self.ls.r_vec = dw_vtx2xyz.flatten_all()?.to_vec1::<f32>()?;
                 self.ls.solve_cg();
-                Tensor::from_vec(self.ls.u_vec.clone(), (num_vtx, 3), &candle_core::Device::Cpu)?
+                Tensor::from_vec(
+                    self.ls.u_vec.clone(),
+                    (num_vtx, 3),
+                    &candle_core::Device::Cpu,
+                )?
             };
             self.m = ((b1 * self.m.clone())? + ((1. - b1) * grad.clone())?)?;
             let hoge = grad.clone().sqr()?.sum_keepdim(1)?;
-            self.v = ((b2 * self.v.clone())? + ((1. - b2) * hoge )?)?;
+            self.v = ((b2 * self.v.clone())? + ((1. - b2) * hoge)?)?;
             let m_hat = (&self.m / (1. - b1.powf(self.t)))?;
             let v_hat = (&self.v / (1. - b2.powf(self.t)))?;
-            let delta = (m_hat * self.params.lr)?.broadcast_div(&(v_hat.sqrt()? + self.params.eps)?)?;
+            let delta =
+                (m_hat * self.params.lr)?.broadcast_div(&(v_hat.sqrt()? + self.params.eps)?)?;
             // let delta = (grad * self.params.lr)?; // gradient descent
             let delta = {
                 self.ls.r_vec = delta.flatten_all()?.to_vec1::<f32>()?;
                 self.ls.solve_cg();
-                Tensor::from_vec(self.ls.u_vec.clone(), (num_vtx, 3), &candle_core::Device::Cpu)?
+                Tensor::from_vec(
+                    self.ls.u_vec.clone(),
+                    (num_vtx, 3),
+                    &candle_core::Device::Cpu,
+                )?
             };
             self.vtx2xyz.set(&self.vtx2xyz.sub(&(delta))?)?;
         }
         Ok(())
     }
 }
-

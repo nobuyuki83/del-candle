@@ -98,8 +98,7 @@ fn test_backward() -> anyhow::Result<()> {
     }
     {
         // add perturbation
-        let rand0 =
-            &Tensor::randn(1f32, 1f32, (num_vtx, 2), &candle_core::Device::Cpu)?;
+        let rand0 = &Tensor::randn(1f32, 1f32, (num_vtx, 2), &candle_core::Device::Cpu)?;
         vtx2xy.add(&rand0)?;
     }
     let render = Layer {
@@ -114,7 +113,7 @@ fn test_backward() -> anyhow::Result<()> {
     let eps = 1.0e-2f32;
     for i_vtx in 0..num_vtx {
         for i_dim in 0..2 {
-            let vtx2xy1 = puturb_2d_tensor(&vtx2xy, i_vtx, i_dim, eps.into())?;
+            let vtx2xy1 = peturb_2d_tensor(&vtx2xy, i_vtx, i_dim, eps.into())?;
             let render = Layer {
                 elem2idx: elem2idx.clone(),
                 idx2vtx: idx2vtx.clone(),

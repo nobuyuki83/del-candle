@@ -83,7 +83,14 @@ pub fn raycast3(
         candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<u32>()?,
         _ => panic!(),
     };
-    let img = del_canvas::raycast_trimesh3::pix2tri(tri2vtx, vtx2xyz, bvhnodes, aabbs, img_shape, transform_ndc2world);
+    let img = del_canvas::raycast_trimesh3::pix2tri(
+        tri2vtx,
+        vtx2xyz,
+        bvhnodes,
+        aabbs,
+        img_shape,
+        transform_ndc2world,
+    );
     let img = candle_core::Tensor::from_vec(img, *img_shape, &candle_core::Device::Cpu)?;
     Ok(img)
 }
