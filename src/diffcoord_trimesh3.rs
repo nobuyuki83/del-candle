@@ -129,7 +129,8 @@ fn test_backward() -> anyhow::Result<()> {
     let eps: f32 = 1.0e-3;
     for i_vtx in 0..num_vtx {
         for i_dim in 0..3 {
-            let vtx2xyz1 = puturb_2d_tensor(&vtx2xyz0, i_vtx, i_dim, eps as f64)?;
+            let vtx2xyz1 =
+                crate::perturb_tensor::peturb_2d_tensor(&vtx2xyz0, i_vtx, i_dim, eps as f64)?;
             let render = Layer {
                 vtx2idx: vtx2idx.clone(),
                 idx2vtx: idx2vtx.clone(),

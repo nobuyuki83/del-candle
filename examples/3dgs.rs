@@ -12,8 +12,8 @@ struct Camera {
 
 fn point_to_splat(
     point2gauss: Tensor,
-    mvp: &[f32;16],
-    img_shape: (usize,usize)
+    mvp: &[f32; 16],
+    img_shape: (usize, usize),
 ) -> anyhow::Result<(Tensor, Vec<usize>, Vec<usize>, Vec<usize>)> {
     let num_point = point2gauss.dims2()?.0;
     let point2gauss = point2gauss.storage_and_layout().0;
@@ -33,9 +33,7 @@ fn point_to_splat(
             let rotdia = del_geo_core::mat3_col_major::mult_mat_col_major(&rot, &dia);
             nalgebra::Matrix3::<f32>::from_column_slice(&rotdia)
         };
-        let pos_ndc =
-            del_geo_core::mat4_col_major::transform_homogeneous(&mvp, pos_world)
-                .unwrap();
+        let pos_ndc = del_geo_core::mat4_col_major::transform_homogeneous(&mvp, pos_world).unwrap();
         // dbg!(i_point, pos_ndc);
         let pos_pix = [
             (pos_ndc[0] + 1.0) * 0.5 * (img_shape.0 as f32),
@@ -151,12 +149,12 @@ fn main() -> anyhow::Result<()> {
             obj.load("examples/asset/spot_triangulated.obj")?;
             obj.unified_xyz_uv_as_trimesh()
         };
-        const NUM_POINTS: usize = 10_000;
+        const NUM_POINTS: usize = 10000;
         let mut pos2three: Vec<f32> = vec![0f32; NUM_POINTS * NDOF_GAUSS];
         let cumsumarea = del_msh_core::sampling::cumulative_area_sum(&tri2vtx, &vtx2xyz, 3);
         // let mut reng = rand::thread_rng();
         use rand::SeedableRng;
-        let mut reng = rand_chacha::ChaCha8Rng::seed_from_u64(0);
+        let mut reng = rand_chacha::ChaCha8Rng::seed_from_u64(2);
         for i_point in 0..NUM_POINTS {
             let val01_a = reng.gen::<f32>();
             let val01_b = reng.gen::<f32>();
@@ -209,8 +207,7 @@ fn main() -> anyhow::Result<()> {
     for i_itr in 0..100 {
         let img_out = {
             let now = std::time::Instant::now();
-            let mvp =
-                del_geo_core::mat4_col_major::multmat(&cam.projection, &cam.modelview);
+            let mvp = del_geo_core::mat4_col_major::multmat(&cam.projection, &cam.modelview);
             let (point2splat, tile2jdx, jdx2idx, idx2point) =
                 point_to_splat(point2gauss.as_detached_tensor(), &mvp, cam.img_shape)?;
             let render = del_candle::gaussian_splatting::Layer {
@@ -219,25 +216,68 @@ fn main() -> anyhow::Result<()> {
                 tile2jdx: tile2jdx.clone(),
                 jdx2idx: jdx2idx.clone(),
                 idx2point: idx2point.clone(),
-                tile_size: TILE_SIZE
+                tile_size: TILE_SIZE,
+                mvp: mvp.clone(),
             };
             let img = point2gauss.apply_op1(render)?;
-            println!("   Elapsed gaussian_naive: {:.2?}", now.elapsed());
+            println!("   render: {:.2?}", now.elapsed());
             img
         };
         {
             let img_data = img_out.flatten_all()?.to_vec1::<f32>()?;
             del_canvas::write_png_from_float_image_rgb(
-                format!("target/points3d_gaussian_{}.png",i_itr),
+                format!("target/points3d_gaussian_{}.png", i_itr),
                 &cam.img_shape,
                 &img_data,
             );
         }
         let diff = img_trg.sub(&img_out).unwrap().sqr()?.sum_all()?;
-        println!("{} {}",i_itr,diff.to_vec0::<f32>()?);
-        let grad = diff.backward()?;
-        let dw_pont2gauss = grad.get(&point2gauss).unwrap();
-        let _ = point2gauss.set(&point2gauss.as_tensor().sub(&(dw_pont2gauss * 0.001)?)?);
+        println!("{} {}", i_itr, diff.to_vec0::<f32>()?);
+        let grad = {
+            let now = std::time::Instant::now();
+            let grad = diff.backward()?;
+            println!("   backward: {:.2?}", now.elapsed());
+            grad
+        };
+        let now = std::time::Instant::now();
+        let dw_point2gauss = grad.get(&point2gauss).unwrap();
+        let num_point = point2gauss.dims2()?.0;
+        let dw_point2gauss = dw_point2gauss.flatten_all()?.to_vec1::<f32>()?;
+        let mut point2gauss1 = point2gauss.flatten_all()?.to_vec1::<f32>()?;
+        let lr = 0.000005;
+        for i_point in 0..num_point {
+            let delta = &dw_point2gauss[i_point * NDOF_GAUSS..(i_point + 1) * NDOF_GAUSS];
+            let gauss0 =
+                Vec::<f32>::from(&point2gauss1[i_point * NDOF_GAUSS..(i_point + 1) * NDOF_GAUSS]);
+            let gauss1 = &mut point2gauss1[i_point * NDOF_GAUSS..(i_point + 1) * NDOF_GAUSS];
+            for i in 0..7 {
+                gauss1[i] -= delta[i] * lr;
+            }
+            {
+                // 7-10
+                let ddia = arrayref::array_ref![delta, 7, 3];
+                let dia1 = arrayref::array_mut_ref![gauss1, 7, 3];
+                for i in 0..3 {
+                    let d = dia1[i] - ddia[i] * lr;
+                    dia1[i] = d.max(1.0e-5f32);
+                }
+            }
+            {
+                // 10-14
+                let quat0 = arrayref::array_ref![gauss0, 10, 4];
+                let r0 = del_geo_core::quat::to_mat3_col_major(quat0);
+                let daa = arrayref::array_ref![delta, 10, 3];
+                let daa = del_geo_core::vec3::scaled(daa, lr);
+                let dr = del_geo_core::vec3::to_mat3_from_axisangle_vec(&daa);
+                let r1 = del_geo_core::mat3_col_major::mult_mat_col_major(&dr, &r0);
+                let quat1 = del_geo_core::mat3_col_major::to_quaternion(&r1);
+                let quat1 = del_geo_core::quat::normalized(&quat1);
+                gauss1[10..14].copy_from_slice(&quat1);
+            }
+        }
+        let point2gauss1 = Tensor::from_vec(point2gauss1, (num_point, NDOF_GAUSS), &Device::Cpu)?;
+        point2gauss.set(&point2gauss1)?;
+        println!("   update: {:.2?}", now.elapsed());
     }
 
     Ok(())

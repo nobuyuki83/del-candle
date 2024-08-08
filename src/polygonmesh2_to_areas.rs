@@ -1,6 +1,5 @@
-use std::ops::Deref;
-
 use candle_core::{CpuStorage, Layout, Shape, Tensor};
+use std::ops::Deref;
 
 pub struct Layer {
     pub elem2idx: Vec<usize>,
@@ -113,7 +112,8 @@ fn test_backward() -> anyhow::Result<()> {
     let eps = 1.0e-2f32;
     for i_vtx in 0..num_vtx {
         for i_dim in 0..2 {
-            let vtx2xy1 = peturb_2d_tensor(&vtx2xy, i_vtx, i_dim, eps.into())?;
+            let vtx2xy1 =
+                crate::perturb_tensor::peturb_2d_tensor(&vtx2xy, i_vtx, i_dim, eps.into())?;
             let render = Layer {
                 elem2idx: elem2idx.clone(),
                 idx2vtx: idx2vtx.clone(),

@@ -2,6 +2,7 @@ pub mod bvh;
 pub mod cubic_stylization;
 pub mod diffcoord_polyloop2;
 pub mod diffcoord_trimesh3;
+pub mod gaussian_splatting;
 pub mod gd_with_laplacian_reparam;
 pub mod perturb_tensor;
 pub mod polygonmesh2_to_areas;
@@ -13,10 +14,10 @@ pub mod trimesh3_to_tri2nrm;
 pub mod vector_adam;
 pub mod voronoi2;
 pub mod vtx2xyz_to_edgevector;
-pub mod gaussian_splatting;
 
 pub fn load_img_as_tensor<P>(path: P) -> candle_core::Tensor
-where P: AsRef<std::path::Path>
+where
+    P: AsRef<std::path::Path>,
 {
     use image::GenericImageView;
     let img_trg = image::open(path).unwrap();
@@ -30,5 +31,6 @@ where P: AsRef<std::path::Path>
         img_trg,
         candle_core::Shape::from((height, width, depth)),
         &candle_core::Device::Cpu,
-    ).unwrap()
+    )
+    .unwrap()
 }

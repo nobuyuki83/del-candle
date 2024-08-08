@@ -1,6 +1,5 @@
-use candle_core::{CpuStorage, Device, Layout, Shape, Tensor};
+use candle_core::{CpuStorage, Device::Cpu, Layout, Shape, Tensor};
 use std::ops::Deref;
-use candle_core::Device::Cpu;
 
 pub struct Layer {
     pub point2splat: Tensor,
@@ -9,6 +8,7 @@ pub struct Layer {
     pub jdx2idx: Vec<usize>,
     pub idx2point: Vec<usize>,
     pub tile_size: usize,
+    pub mvp: [f32; 16],
 }
 
 impl candle_core::CustomOp1 for Layer {
@@ -19,7 +19,7 @@ impl candle_core::CustomOp1 for Layer {
     fn cpu_fwd(
         &self,
         storage: &CpuStorage,
-        layout: &Layout,
+        _layout: &Layout,
     ) -> candle_core::Result<(CpuStorage, Shape)> {
         let point2gauss = storage.as_slice::<f32>()?;
         let point2splat = self.point2splat.storage_and_layout().0;
@@ -27,11 +27,16 @@ impl candle_core::CustomOp1 for Layer {
             candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<f32>()?,
             _ => panic!(),
         };
-        let pix2rgb =  del_canvas::rasterize_gaussian_splatting::rasterize(
-            point2gauss, point2splat,
-            &self.tile2jdx, &self.jdx2idx, &self.idx2point, self.img_shape,
-            self.tile_size);
-        let shape = candle_core::Shape::from((self.img_shape.1, self.img_shape.0,3));
+        let pix2rgb = del_canvas::rasterize_gaussian_splatting::rasterize(
+            point2gauss,
+            point2splat,
+            &self.tile2jdx,
+            &self.jdx2idx,
+            &self.idx2point,
+            self.img_shape,
+            self.tile_size,
+        );
+        let shape = candle_core::Shape::from((self.img_shape.1, self.img_shape.0, 3));
         let storage = candle_core::WithDType::to_cpu_storage_owned(pix2rgb);
         Ok((storage, shape))
     }
@@ -45,6 +50,7 @@ impl candle_core::CustomOp1 for Layer {
         _pix2rgb: &Tensor,
         dw_pix2rgb: &Tensor,
     ) -> candle_core::Result<Option<Tensor>> {
+        let ndof_gauss = point2gauss.dims2()?.1;
         let point2gauss = point2gauss.storage_and_layout().0;
         let point2gauss = match point2gauss.deref() {
             candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<f32>()?,
@@ -60,19 +66,26 @@ impl candle_core::CustomOp1 for Layer {
             candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<f32>()?,
             _ => panic!(),
         };
-        const NDOF_GAUSS: usize = 14; // xyz, rgba, s0,s1,s2, q0,q1,q2,q3
-        const NDOF_SPLAT: usize = 10; // pos_pix(2) + abc(3) + aabb(4) + ndc_z(1)
-        let num_point = self.point2splat.dims2()?.0;
         let dw_point2gauss = del_canvas::rasterize_gaussian_splatting::diff_point2gauss(
-            point2gauss, point2splat,
-            &self.tile2jdx, &self.jdx2idx, &self.idx2point, self.img_shape,
-            self.tile_size, dw_pix2rgb);
-        let dw_vtx2xyz =
-            Tensor::from_vec(dw_point2gauss, candle_core::Shape::from((num_point, NDOF_GAUSS)), &Cpu)?;
+            point2gauss,
+            point2splat,
+            &self.tile2jdx,
+            &self.jdx2idx,
+            &self.idx2point,
+            self.img_shape,
+            self.tile_size,
+            &self.mvp,
+            dw_pix2rgb,
+        );
+        let num_point = self.point2splat.dims2()?.0;
+        let dw_vtx2xyz = Tensor::from_vec(
+            dw_point2gauss,
+            candle_core::Shape::from((num_point, ndof_gauss)),
+            &Cpu,
+        )?;
         Ok(Some(dw_vtx2xyz))
     }
 }
-
 
 /*
 fn rasterize_splats(
