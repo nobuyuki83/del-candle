@@ -19,17 +19,10 @@ pub fn load_img_as_tensor<P>(path: P) -> candle_core::Tensor
 where
     P: AsRef<std::path::Path>,
 {
-    use image::GenericImageView;
-    let img_trg = image::open(path).unwrap();
-    let (width, height) = img_trg.dimensions();
-    let (width, height) = (width as usize, height as usize);
-    let depth: usize = img_trg.color().bytes_per_pixel().into();
-    let img_trg = img_trg.into_bytes();
-    let img_trg: Vec<f32> = img_trg.iter().map(|&v| (v as f32) / 255.0f32).collect();
-    assert_eq!(img_trg.len(), width * height * depth);
+    let (data, img_shape, depth) = del_canvas::load_image_as_float_array(&path);
     candle_core::Tensor::from_vec(
-        img_trg,
-        candle_core::Shape::from((height, width, depth)),
+        data,
+        candle_core::Shape::from((img_shape.0, img_shape.1, depth)),
         &candle_core::Device::Cpu,
     )
     .unwrap()
