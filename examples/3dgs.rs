@@ -1,7 +1,6 @@
 use candle_core::{Device, Tensor};
 use rand::Rng;
 use std::ops::Deref;
-use del_geo_core::mat2_sym::safe_inverse_preserve_positive_definiteness;
 
 const NDOF_GAUSS: usize = 14; // xyz, rgba, s0,s1,s2, q0,q1,q2,q3
 const NDOF_SPLAT: usize = 10; // pos_pix(2) + abc(3) + aabb(4) + ndc_z(1)
@@ -27,10 +26,10 @@ fn point_to_splat(
     // transform points
     for i_point in 0..num_point {
         let gauss = del_canvas::gaussian_splatting::Gauss::new(arrayref::array_ref![
-                point2gauss,
-                i_point * NDOF_GAUSS,
-                NDOF_GAUSS
-            ]);
+            point2gauss,
+            i_point * NDOF_GAUSS,
+            NDOF_GAUSS
+        ]);
         let pos_world = gauss.pos_world();
         let pos_ndc = del_geo_core::mat4_col_major::transform_homogeneous(&mvp, pos_world).unwrap();
         let pos_pix = [
@@ -51,7 +50,8 @@ fn point_to_splat(
         let depth = point2splat[i_point * NDOF_SPLAT + 9];
         (aabb.clone(), depth)
     };
-    let (tile2jdx, jdx2idx, idx2point) = del_canvas::gaussian_splatting::tile2point(point2aabbdepth, img_shape, num_point);
+    let (tile2jdx, jdx2idx, idx2point) =
+        del_canvas::gaussian_splatting::tile2point(point2aabbdepth, img_shape, num_point);
     let point2splat = Tensor::from_slice(&point2splat, (num_point, NDOF_SPLAT), &Device::Cpu)?;
     return Ok((point2splat, tile2jdx, jdx2idx, idx2point));
 }
@@ -62,8 +62,8 @@ fn main() -> anyhow::Result<()> {
             let mut obj = del_msh_core::io_obj::WavefrontObj::<usize, f32>::new();
             obj.load("examples/asset/spot_triangulated.obj")?;
             let (tri2vtx, vtx2xyz, _vtx2uv) = obj.unified_xyz_uv_as_trimesh();
-            let rot90x = del_geo_core::mat4_col_major::rot_x(std::f32::consts::PI*0.5);
-            let vtx2xyz = del_msh_core::vtx2xyz::transform(&vtx2xyz, &rot90x);
+            // let rot90x = del_geo_core::mat4_col_major::rot_x(std::f32::consts::PI * 0.5);
+            //let vtx2xyz = del_msh_core::vtx2xyz::transform(&vtx2xyz, &rot90x);
             (tri2vtx, vtx2xyz)
         };
         const NUM_POINTS: usize = 10000;
@@ -104,14 +104,14 @@ fn main() -> anyhow::Result<()> {
         let img_shape = (TILE_SIZE * 28, TILE_SIZE * 28);
         let projection = del_geo_core::mat4_col_major::camera_perspective_blender(
             img_shape.0 as f32 / img_shape.1 as f32,
-            //24f32,
-            50f32,
+            24f32,
+            //50f32,
             0.3,
             3.0,
         );
         let modelview =
-            del_geo_core::mat4_col_major::camera_external_blender(&[-1.8, 2., 1.3], 65., 0., 222.);
-            //del_geo_core::mat4_col_major::camera_external_blender(&[-0., 0., 2.], 0., 0., 0.);
+            //del_geo_core::mat4_col_major::camera_external_blender(&[-1.8, 2., 1.3], 65., 0., 222.);
+        del_geo_core::mat4_col_major::camera_external_blender(&[-0., 0., 2.], 0., 0., 0.);
         Camera {
             img_shape,
             projection,
@@ -119,7 +119,7 @@ fn main() -> anyhow::Result<()> {
         }
     };
 
-    let img_trg = del_candle::load_img_as_tensor("examples/asset/trg2.png");
+    let img_trg = del_candle::load_img_as_tensor("examples/asset/trg0.png");
     //let img_trg = del_candle::load_img_as_tensor("examples/asset/trg0.png");
     // dbg!(img_trg.shape().dims3()?);
     // dbg!(img_trg.flatten_all()?.to_vec1::<f32>());
@@ -198,7 +198,7 @@ fn main() -> anyhow::Result<()> {
                 let daa = arrayref::array_ref![delta, 10, 3];
                 let daa = del_geo_core::vec3::scaled(daa, lr);
                 let dq = del_geo_core::vec3::to_quaternion_from_axis_angle_vector(&daa);
-                let quat1 = del_geo_core::quat::mult_quaternion(&dq,&quat0);
+                let quat1 = del_geo_core::quat::mult_quaternion(&dq, &quat0);
                 //let r0 = del_geo_core::quat::to_mat3_col_major(quat0);
                 //let dr = del_geo_core::vec3::to_mat3_from_axisangle_vec(&daa);
                 //let r1 = del_geo_core::mat3_col_major::mult_mat_col_major(&dr, &r0);
