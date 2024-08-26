@@ -25,7 +25,7 @@ fn point_to_splat(
     let mut point2splat = vec![0f32; num_point * NDOF_SPLAT];
     // transform points
     for i_point in 0..num_point {
-        let gauss = del_canvas::gaussian_splatting::Gauss::new(arrayref::array_ref![
+        let gauss = del_canvas_core::gaussian_splatting::Gauss::new(arrayref::array_ref![
             point2gauss,
             i_point * NDOF_GAUSS,
             NDOF_GAUSS
@@ -51,7 +51,7 @@ fn point_to_splat(
         (aabb.clone(), depth)
     };
     let (tile2jdx, jdx2idx, idx2point) =
-        del_canvas::gaussian_splatting::tile2point(point2aabbdepth, img_shape, num_point);
+        del_canvas_core::gaussian_splatting::tile2point(point2aabbdepth, img_shape, num_point);
     let point2splat = Tensor::from_slice(&point2splat, (num_point, NDOF_SPLAT), &Device::Cpu)?;
     return Ok((point2splat, tile2jdx, jdx2idx, idx2point));
 }
@@ -152,7 +152,7 @@ fn main() -> anyhow::Result<()> {
         };
         {
             let img_data = img_out.flatten_all()?.to_vec1::<f32>()?;
-            del_canvas::write_png_from_float_image_rgb(
+            del_canvas_core::write_png_from_float_image_rgb(
                 format!("target/points3d_gaussian_{}.png", i_itr),
                 &cam.img_shape,
                 &img_data,
