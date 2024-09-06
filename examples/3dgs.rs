@@ -108,6 +108,7 @@ fn main() -> anyhow::Result<()> {
             //50f32,
             0.3,
             3.0,
+            true
         );
         let modelview =
             //del_geo_core::mat4_col_major::camera_external_blender(&[-1.8, 2., 1.3], 65., 0., 222.);
@@ -119,7 +120,7 @@ fn main() -> anyhow::Result<()> {
         }
     };
 
-    let img_trg = del_candle::load_img_as_tensor("examples/asset/trg0.png");
+    let img_trg = del_candle::load_img_as_tensor("examples/asset/trg0.png")?;
     //let img_trg = del_candle::load_img_as_tensor("examples/asset/trg0.png");
     // dbg!(img_trg.shape().dims3()?);
     // dbg!(img_trg.flatten_all()?.to_vec1::<f32>());
@@ -156,7 +157,7 @@ fn main() -> anyhow::Result<()> {
                 format!("target/points3d_gaussian_{}.png", i_itr),
                 &cam.img_shape,
                 &img_data,
-            );
+            )?;
         }
         let diff = img_trg.sub(&img_out).unwrap().sqr()?.sum_all()?;
         println!("{} {}", i_itr, diff.to_vec0::<f32>()?);
