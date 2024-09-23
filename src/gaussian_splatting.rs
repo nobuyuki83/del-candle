@@ -27,7 +27,7 @@ impl candle_core::CustomOp1 for Layer {
             candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<f32>()?,
             _ => panic!(),
         };
-        let pix2rgb = del_canvas_core::gaussian_splatting::rasterize(
+        let pix2rgb = del_canvas_cpu::gaussian_splatting::rasterize(
             point2gauss,
             point2splat,
             &self.tile2jdx,
@@ -66,7 +66,7 @@ impl candle_core::CustomOp1 for Layer {
             candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<f32>()?,
             _ => panic!(),
         };
-        let dw_point2gauss = del_canvas_core::gaussian_splatting::diff_point2gauss(
+        let dw_point2gauss = del_canvas_cpu::gaussian_splatting::diff_point2gauss(
             point2gauss,
             point2splat,
             &self.tile2jdx,

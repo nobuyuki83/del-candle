@@ -19,14 +19,13 @@ image = "0.25.1"
 rayon = "1.10.0"
 rand_chacha = "0.3.1"
 arrayref = "0.3.8"
-#
-del-geo-core = "0.1.29"# { path = "../del-geo/del-geo-core"}
-del-geo-nalgebra = "0.1.29"#{ path = "../del-geo/del-geo-nalgebra"}
-del-msh-core = "0.1.34" #{ path = "../del-msh/del-msh-core"}
-del-canvas-core = "0.1.1" # { path = "../del-canvas/del-canvas-core"}
-del-ls = "0.1.5" # { path = "../del-ls" }
-# del-ls = { path = "../del-ls" }
-del-fem-core = "0.1.3" # { path = "../del-fem/del-fem-core"}
+
+del-geo-core = { path = "../del-geo/del-geo-core"}
+del-geo-nalgebra = { path = "../del-geo/del-geo-nalgebra"}
+del-msh-core = { path = "../del-msh/del-msh-core"}
+del-canvas-cpu = { path = "../del-canvas/del-canvas-cpu"}
+del-fem-core = { path = "../del-fem/del-fem-core"}
+del-ls = { path = "../del-fem/del-ls" }
 
 #del-geo = "0.1.22"
 #del-msh = "0.1.28"
