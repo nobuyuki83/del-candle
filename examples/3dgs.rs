@@ -25,7 +25,7 @@ fn point_to_splat(
     let mut point2splat = vec![0f32; num_point * NDOF_SPLAT];
     // transform points
     for i_point in 0..num_point {
-        let gauss = del_canvas_core::gaussian_splatting::Gauss::new(arrayref::array_ref![
+        let gauss = del_canvas_cpu::gaussian_splatting::Gauss::new(arrayref::array_ref![
             point2gauss,
             i_point * NDOF_GAUSS,
             NDOF_GAUSS
@@ -51,7 +51,7 @@ fn point_to_splat(
         (aabb.clone(), depth)
     };
     let (tile2jdx, jdx2idx, idx2point) =
-        del_canvas_core::gaussian_splatting::tile2point(point2aabbdepth, img_shape, num_point);
+        del_canvas_cpu::gaussian_splatting::tile2point(point2aabbdepth, img_shape, num_point);
     let point2splat = Tensor::from_slice(&point2splat, (num_point, NDOF_SPLAT), &Device::Cpu)?;
     return Ok((point2splat, tile2jdx, jdx2idx, idx2point));
 }
@@ -108,6 +108,7 @@ fn main() -> anyhow::Result<()> {
             //50f32,
             0.3,
             3.0,
+            true
         );
         let modelview =
             //del_geo_core::mat4_col_major::camera_external_blender(&[-1.8, 2., 1.3], 65., 0., 222.);
@@ -119,7 +120,7 @@ fn main() -> anyhow::Result<()> {
         }
     };
 
-    let img_trg = del_candle::load_img_as_tensor("examples/asset/trg0.png");
+    let img_trg = del_candle::load_img_as_tensor("examples/asset/trg0.png")?;
     //let img_trg = del_candle::load_img_as_tensor("examples/asset/trg0.png");
     // dbg!(img_trg.shape().dims3()?);
     // dbg!(img_trg.flatten_all()?.to_vec1::<f32>());
@@ -130,7 +131,7 @@ fn main() -> anyhow::Result<()> {
         // println!("after update gauss max {:?}",point2gauss.max(0)?.to_vec1::<f32>()?);
         let img_out = {
             let now = std::time::Instant::now();
-            let mvp = del_geo_core::mat4_col_major::multmat(&cam.projection, &cam.modelview);
+            let mvp = del_geo_core::mat4_col_major::mult_mat(&cam.projection, &cam.modelview);
             let (point2splat, tile2jdx, jdx2idx, idx2point) =
                 point_to_splat(point2gauss.as_detached_tensor(), &mvp, cam.img_shape)?;
             // println!("after update splat min {:?}",point2splat.min(0)?.to_vec1::<f32>()?);
@@ -152,11 +153,11 @@ fn main() -> anyhow::Result<()> {
         };
         {
             let img_data = img_out.flatten_all()?.to_vec1::<f32>()?;
-            del_canvas_core::write_png_from_float_image_rgb(
+            del_canvas_cpu::write_png_from_float_image_rgb(
                 format!("target/points3d_gaussian_{}.png", i_itr),
                 &cam.img_shape,
                 &img_data,
-            );
+            )?;
         }
         let diff = img_trg.sub(&img_out).unwrap().sqr()?.sum_all()?;
         println!("{} {}", i_itr, diff.to_vec0::<f32>()?);

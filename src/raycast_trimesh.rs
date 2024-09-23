@@ -83,7 +83,7 @@ pub fn raycast3(
         candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<u32>()?,
         _ => panic!(),
     };
-    let img = del_canvas_core::raycast_trimesh3::pix2tri(
+    let img = del_canvas_cpu::raycast_trimesh3::pix2tri(
         tri2vtx,
         vtx2xyz,
         bvhnodes,

@@ -1,4 +1,4 @@
-use del_canvas_core::canvas_gif::Canvas;
+use del_canvas_cpu::canvas_gif::Canvas;
 
 use del_candle::voronoi2::VoronoiInfo;
 
@@ -10,7 +10,7 @@ fn my_paint(
     voronoi_info: &VoronoiInfo,
     vtxv2xy: &[f32],
 ) {
-    del_canvas_core::rasterize_polygon::stroke(
+    del_canvas_cpu::rasterize_polygon::stroke(
         &mut canvas.data,
         canvas.width,
         &vtxl2xy,
@@ -19,7 +19,7 @@ fn my_paint(
         1,
     );
     for i_site in 0..site2xy.len() / 2 {
-        del_canvas_core::rasterize_circle::fill(
+        del_canvas_cpu::rasterize_circle::fill(
             &mut canvas.data,
             canvas.width,
             &[site2xy[i_site * 2 + 0], site2xy[i_site * 2 + 1]],
@@ -36,7 +36,7 @@ fn my_paint(
             let i1_vtx = (i0_vtx + 1) % num_vtx_in_site;
             let i0 = idx2vtxv[site2idx[i_site] + i0_vtx];
             let i1 = idx2vtxv[site2idx[i_site] + i1_vtx];
-            del_canvas_core::rasterize_line::draw_dda_with_transformation(
+            del_canvas_cpu::rasterize_line::draw_dda_with_transformation(
                 &mut canvas.data,
                 canvas.width,
                 &[vtxv2xy[i0 * 2 + 0], vtxv2xy[i0 * 2 + 1]],
@@ -59,7 +59,7 @@ fn main() -> anyhow::Result<()> {
     // dbg!(&site2room);
     // del_canvas from here
     let mut canvas = {
-        del_canvas_core::canvas_gif::Canvas::new(
+        del_canvas_cpu::canvas_gif::Canvas::new(
             "target/area_opt.gif",
             (300, 300),
             &vec![0xffffff, 0x000000],

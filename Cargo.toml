@@ -21,9 +21,9 @@ arrayref = "0.3.8"
 del-geo-core = { path = "../del-geo/del-geo-core"}
 del-geo-nalgebra = { path = "../del-geo/del-geo-nalgebra"}
 del-msh-core = { path = "../del-msh/del-msh-core"}
-del-canvas-core = { path = "../del-canvas/del-canvas-core"}
+del-canvas-cpu = { path = "../del-canvas/del-canvas-cpu"}
 del-fem-core = { path = "../del-fem/del-fem-core"}
-del-ls = { path = "../del-ls" }
+del-ls = { path = "../del-fem/del-ls" }
 #del-geo = "0.1.22"
 #del-msh = "0.1.28"
 #del-canvas = "0.1.1"
