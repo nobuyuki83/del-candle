@@ -199,12 +199,12 @@ fn main() -> anyhow::Result<()> {
                 let daa = arrayref::array_ref![delta, 10, 3];
                 let daa = del_geo_core::vec3::scaled(daa, lr);
                 let dq = del_geo_core::vec3::to_quaternion_from_axis_angle_vector(&daa);
-                let quat1 = del_geo_core::quat::mult_quaternion(&dq, &quat0);
+                let quat1 = del_geo_core::quaternion::mult_quaternion(&dq, &quat0);
                 //let r0 = del_geo_core::quat::to_mat3_col_major(quat0);
                 //let dr = del_geo_core::vec3::to_mat3_from_axisangle_vec(&daa);
                 //let r1 = del_geo_core::mat3_col_major::mult_mat_col_major(&dr, &r0);
                 //let quat1 = del_geo_core::mat3_col_major::to_quaternion(&r1);
-                let quat1 = del_geo_core::quat::normalized(&quat1);
+                let quat1 = del_geo_core::quaternion::normalized(&quat1);
                 gauss1[10..14].copy_from_slice(&quat1);
             }
         }
