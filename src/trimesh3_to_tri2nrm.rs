@@ -1,5 +1,44 @@
+use candle_core::backend::BackendStorage;
+
 pub struct Layer {
-    tri2vtx: candle_core::Tensor,
+    pub tri2vtx: candle_core::Tensor,
+}
+
+fn hoge<INDEX>(
+    tri2vtx: &[INDEX],
+    vtx2xyz: &[f32],
+    dw_tri2nrm: &[f32]
+) -> candle_core::Result<Option<candle_core::Tensor>>
+where INDEX: num_traits::AsPrimitive<usize>
+{
+    let num_vtx = vtx2xyz.len() / 3;
+    let mut dw_vtx2xyz = vec!(0f32; num_vtx * 3);
+    for (i_tri, node2vtx) in tri2vtx.chunks(3).enumerate() {
+        let (i0, i1, i2) = (
+            node2vtx[0].as_(),
+            node2vtx[1].as_(),
+            node2vtx[2].as_(),
+        );
+        let p0 = del_msh_core::vtx2xyz::to_navec3(vtx2xyz, i0);
+        let p1 = del_msh_core::vtx2xyz::to_navec3(vtx2xyz, i1);
+        let p2 = del_msh_core::vtx2xyz::to_navec3(vtx2xyz, i2);
+        let dw = del_geo_nalgebra::tri3::dw_normal(&p0, &p1, &p2);
+        let dw_nrm = del_msh_core::vtx2xyz::to_navec3(dw_tri2nrm, i_tri);
+        let q0 = dw_nrm.transpose() * dw[0];
+        let q1 = dw_nrm.transpose() * dw[1];
+        let q2 = dw_nrm.transpose() * dw[2];
+        for i in 0..3 {
+            dw_vtx2xyz[i0 * 3 + i] += q0[i];
+            dw_vtx2xyz[i1 * 3 + i] += q1[i];
+            dw_vtx2xyz[i2 * 3 + i] += q2[i];
+        }
+    }
+    let dw_vtx2xyz = candle_core::Tensor::from_vec(
+        dw_vtx2xyz,
+        candle_core::Shape::from((num_vtx, 3)),
+        &candle_core::Device::Cpu,
+    )?;
+    Ok(Some(dw_vtx2xyz))
 }
 
 impl candle_core::CustomOp1 for Layer {
@@ -16,14 +55,33 @@ impl candle_core::CustomOp1 for Layer {
         let vtx2xyz = storage.as_slice::<f32>()?;
         use std::ops::Deref;
         let tri2vtx = self.tri2vtx.storage_and_layout().0;
-        let tri2vtx = match tri2vtx.deref() {
-            candle_core::Storage::Cpu(cpu_tri2vtx) => cpu_tri2vtx.as_slice::<i64>()?,
-            _ => panic!(),
+        match tri2vtx.deref() {
+            candle_core::Storage::Cpu(cpu_tri2vtx) => {
+                match cpu_tri2vtx.dtype() {
+                    candle_core::DType::I64 => {
+                        let tri2vtx = cpu_tri2vtx.as_slice::<i64>()?;
+                        let tri2normal = del_msh_core::trimesh3::tri2normal(tri2vtx, vtx2xyz);
+                        let shape = candle_core::Shape::from(self.tri2vtx.shape().dims2()?);
+                        let storage = candle_core::WithDType::to_cpu_storage_owned(tri2normal);
+                        return Ok((storage, shape));
+                    },
+                    candle_core::DType::U32 => {
+                        let tri2vtx = cpu_tri2vtx.as_slice::<u32>()?;
+                        let tri2normal = del_msh_core::trimesh3::tri2normal(tri2vtx, vtx2xyz);
+                        let shape = candle_core::Shape::from(self.tri2vtx.shape().dims2()?);
+                        let storage = candle_core::WithDType::to_cpu_storage_owned(tri2normal);
+                        return Ok((storage, shape));
+                    },
+                    _ => {
+                        dbg!("hgehoge");
+                        panic!();
+                    }
+                }
+            },
+            _ => {
+                panic!()
+            },
         };
-        let tri2normal = del_msh_core::trimesh3::tri2normal(tri2vtx, vtx2xyz);
-        let shape = candle_core::Shape::from(self.tri2vtx.shape().dims2()?);
-        let storage = candle_core::WithDType::to_cpu_storage_owned(tri2normal);
-        Ok((storage, shape))
     }
 
     /// This function takes as argument the argument `arg` used in the forward pass, the result
@@ -40,11 +98,6 @@ impl candle_core::CustomOp1 for Layer {
         assert!(vtx2xyz.layout().is_contiguous());
         assert!(!vtx2xyz.layout().is_fortran_contiguous());
         use std::ops::Deref;
-        let tri2vtx = self.tri2vtx.storage_and_layout().0;
-        let tri2vtx = match tri2vtx.deref() {
-            candle_core::Storage::Cpu(cpu_tri2vtx) => cpu_tri2vtx.as_slice::<i64>()?,
-            _ => panic!(),
-        };
         let vtx2xyz = vtx2xyz.storage_and_layout().0;
         let vtx2xyz = match vtx2xyz.deref() {
             candle_core::Storage::Cpu(cpu_vtx2xyz) => cpu_vtx2xyz.as_slice::<f32>()?,
@@ -57,33 +110,23 @@ impl candle_core::CustomOp1 for Layer {
                 panic!()
             }
         };
-        let mut dw_vtx2xyz = vec![0f32; num_vtx * 3];
-        for (i_tri, node2vtx) in tri2vtx.chunks(3).enumerate() {
-            let (i0, i1, i2) = (
-                node2vtx[0] as usize,
-                node2vtx[1] as usize,
-                node2vtx[2] as usize,
-            );
-            let p0 = del_msh_core::vtx2xyz::to_navec3(vtx2xyz, i0);
-            let p1 = del_msh_core::vtx2xyz::to_navec3(vtx2xyz, i1);
-            let p2 = del_msh_core::vtx2xyz::to_navec3(vtx2xyz, i2);
-            let dw = del_geo_nalgebra::tri3::dw_normal(&p0, &p1, &p2);
-            let dw_nrm = del_msh_core::vtx2xyz::to_navec3(dw_tri2nrm, i_tri);
-            let q0 = dw_nrm.transpose() * dw[0];
-            let q1 = dw_nrm.transpose() * dw[1];
-            let q2 = dw_nrm.transpose() * dw[2];
-            for i in 0..3 {
-                dw_vtx2xyz[i0 * 3 + i] += q0[i];
-                dw_vtx2xyz[i1 * 3 + i] += q1[i];
-                dw_vtx2xyz[i2 * 3 + i] += q2[i];
-            }
-        }
-        let dw_vtx2xyz = candle_core::Tensor::from_vec(
-            dw_vtx2xyz,
-            candle_core::Shape::from((num_vtx, 3)),
-            &candle_core::Device::Cpu,
-        )?;
-        Ok(Some(dw_vtx2xyz))
+        let tri2vtx = self.tri2vtx.storage_and_layout().0;
+        match tri2vtx.deref() {
+            candle_core::Storage::Cpu(cpu_tri2vtx) => {
+                match cpu_tri2vtx.dtype() {
+                    candle_core::DType::I64 => {
+                        let tri2vtx = cpu_tri2vtx.as_slice::<i64>()?;
+                        return hoge(tri2vtx, vtx2xyz, dw_tri2nrm);
+                    },
+                    candle_core::DType::U32 => {
+                        let tri2vtx = cpu_tri2vtx.as_slice::<u32>()?;
+                        return hoge(tri2vtx, vtx2xyz, dw_tri2nrm);
+                    },
+                    _ => todo!()
+                }
+            },
+            _ => panic!(),
+        };
     }
 }
 

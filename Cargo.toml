@@ -2,6 +2,8 @@
 name = "del-candle"
 version = "0.1.0"
 edition = "2021"
+description = "differential geometry/rendering for huggingface::candle"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -9,6 +11,8 @@ edition = "2021"
 png = "0.17.13"
 nalgebra = "0.33.0"
 # candle-core = { git = "https://github.com/huggingface/candle.git", features=["cuda"]}
+# candle-core = "0.6.0"
+# candle-nn = "0.6.0"
 candle-core = { git = "https://github.com/huggingface/candle.git" }
 candle-nn = { git = "https://github.com/huggingface/candle.git" }
 anyhow = "1.0.86"
@@ -17,13 +21,15 @@ image = "0.25.1"
 rayon = "1.10.0"
 rand_chacha = "0.3.1"
 arrayref = "0.3.8"
-#
+num-traits = "0.2.19"
+
 del-geo-core = { path = "../del-geo/del-geo-core"}
 del-geo-nalgebra = { path = "../del-geo/del-geo-nalgebra"}
 del-msh-core = { path = "../del-msh/del-msh-core"}
 del-canvas-cpu = { path = "../del-canvas/del-canvas-cpu"}
 del-fem-core = { path = "../del-fem/del-fem-core"}
 del-ls = { path = "../del-fem/del-ls" }
+
 #del-geo = "0.1.22"
 #del-msh = "0.1.28"
 #del-canvas = "0.1.1"
