@@ -25,7 +25,7 @@ fn point_to_splat(
     let mut point2splat = vec![0f32; num_point * NDOF_SPLAT];
     // transform points
     for i_point in 0..num_point {
-        let gauss = del_canvas_cpu::gaussian_splatting::Gauss::new(arrayref::array_ref![
+        let gauss = del_canvas_cpu::splat_gaussian2::Gauss::new(arrayref::array_ref![
             point2gauss,
             i_point * NDOF_GAUSS,
             NDOF_GAUSS
@@ -51,7 +51,7 @@ fn point_to_splat(
         (aabb.clone(), depth)
     };
     let (tile2jdx, jdx2idx, idx2point) =
-        del_canvas_cpu::gaussian_splatting::tile2point(point2aabbdepth, img_shape, num_point);
+        del_canvas_cpu::splat_gaussian2::tile2point(point2aabbdepth, img_shape, num_point);
     let point2splat = Tensor::from_slice(&point2splat, (num_point, NDOF_SPLAT), &Device::Cpu)?;
     return Ok((point2splat, tile2jdx, jdx2idx, idx2point));
 }
@@ -199,12 +199,12 @@ fn main() -> anyhow::Result<()> {
                 let daa = arrayref::array_ref![delta, 10, 3];
                 let daa = del_geo_core::vec3::scaled(daa, lr);
                 let dq = del_geo_core::vec3::to_quaternion_from_axis_angle_vector(&daa);
-                let quat1 = del_geo_core::quat::mult_quaternion(&dq, &quat0);
+                let quat1 = del_geo_core::quaternion::mult_quaternion(&dq, &quat0);
                 //let r0 = del_geo_core::quat::to_mat3_col_major(quat0);
                 //let dr = del_geo_core::vec3::to_mat3_from_axisangle_vec(&daa);
                 //let r1 = del_geo_core::mat3_col_major::mult_mat_col_major(&dr, &r0);
                 //let quat1 = del_geo_core::mat3_col_major::to_quaternion(&r1);
-                let quat1 = del_geo_core::quat::normalized(&quat1);
+                let quat1 = del_geo_core::quaternion::normalized(&quat1);
                 gauss1[10..14].copy_from_slice(&quat1);
             }
         }
