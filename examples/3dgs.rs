@@ -15,7 +15,8 @@ fn point_to_splat(
     point2gauss: Tensor,
     mvp: &[f32; 16],
     img_shape: (usize, usize),
-) -> anyhow::Result<(Tensor, Vec<usize>, Vec<usize>, Vec<usize>)> {
+    tile_size: usize,
+) -> anyhow::Result<(Tensor, Vec<usize>, Vec<usize>)> {
     let num_point = point2gauss.dims2()?.0;
     let point2gauss = point2gauss.storage_and_layout().0;
     let point2gauss = match point2gauss.deref() {
@@ -25,7 +26,7 @@ fn point_to_splat(
     let mut point2splat = vec![0f32; num_point * NDOF_SPLAT];
     // transform points
     for i_point in 0..num_point {
-        let gauss = del_canvas_cpu::gaussian_splatting::Gauss::new(arrayref::array_ref![
+        let gauss = del_canvas_cpu::splat_gaussian2::Gauss::new(arrayref::array_ref![
             point2gauss,
             i_point * NDOF_GAUSS,
             NDOF_GAUSS
@@ -50,13 +51,14 @@ fn point_to_splat(
         let depth = point2splat[i_point * NDOF_SPLAT + 9];
         (aabb.clone(), depth)
     };
-    let (tile2jdx, jdx2idx, idx2point) =
-        del_canvas_cpu::gaussian_splatting::tile2point(point2aabbdepth, img_shape, num_point);
+    let (tile2idx, idx2point) =
+        del_canvas_cpu::tile_acceleration::tile2pnt(num_point, point2aabbdepth, img_shape, tile_size);
     let point2splat = Tensor::from_slice(&point2splat, (num_point, NDOF_SPLAT), &Device::Cpu)?;
-    return Ok((point2splat, tile2jdx, jdx2idx, idx2point));
+    return Ok((point2splat, tile2idx, idx2point));
 }
 
 fn main() -> anyhow::Result<()> {
+    const TILE_SIZE: usize = 16;
     let point2gauss = {
         let (tri2vtx, vtx2xyz) = {
             let mut obj = del_msh_core::io_obj::WavefrontObj::<usize, f32>::new();
@@ -99,7 +101,7 @@ fn main() -> anyhow::Result<()> {
     };
     let point2gauss = candle_core::Var::from_tensor(&point2gauss)?;
 
-    const TILE_SIZE: usize = 16;
+
     let cam = {
         let img_shape = (TILE_SIZE * 28, TILE_SIZE * 28);
         let projection = del_geo_core::mat4_col_major::camera_perspective_blender(
@@ -132,8 +134,8 @@ fn main() -> anyhow::Result<()> {
         let img_out = {
             let now = std::time::Instant::now();
             let mvp = del_geo_core::mat4_col_major::mult_mat(&cam.projection, &cam.modelview);
-            let (point2splat, tile2jdx, jdx2idx, idx2point) =
-                point_to_splat(point2gauss.as_detached_tensor(), &mvp, cam.img_shape)?;
+            let (point2splat, tile2idx, idx2point) =
+                point_to_splat(point2gauss.as_detached_tensor(), &mvp, cam.img_shape, TILE_SIZE)?;
             // println!("after update splat min {:?}",point2splat.min(0)?.to_vec1::<f32>()?);
             // println!("after update splat max {:?}",point2splat.max(0)?.to_vec1::<f32>()?);
             println!("   precomp: {:.2?}", now.elapsed());
@@ -141,8 +143,7 @@ fn main() -> anyhow::Result<()> {
             let render = del_candle::gaussian_splatting::Layer {
                 point2splat: point2splat.clone(),
                 img_shape: cam.img_shape,
-                tile2jdx: tile2jdx.clone(),
-                jdx2idx: jdx2idx.clone(),
+                tile2idx: tile2idx.clone(),
                 idx2point: idx2point.clone(),
                 tile_size: TILE_SIZE,
                 mvp: mvp.clone(),

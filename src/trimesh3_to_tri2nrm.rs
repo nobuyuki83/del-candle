@@ -93,7 +93,7 @@ impl candle_core::CustomOp1 for Layer {
         tri2nrm: &candle_core::Tensor,
         dw_tri2norm: &candle_core::Tensor,
     ) -> candle_core::Result<Option<candle_core::Tensor>> {
-        let (num_vtx, _three0) = vtx2xyz.shape().dims2()?;
+        let (_num_vtx, _three0) = vtx2xyz.shape().dims2()?;
         let (_num_tri, _three1) = tri2nrm.shape().dims2()?;
         assert!(vtx2xyz.layout().is_contiguous());
         assert!(!vtx2xyz.layout().is_fortran_contiguous());

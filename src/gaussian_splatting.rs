@@ -4,8 +4,7 @@ use std::ops::Deref;
 pub struct Layer {
     pub point2splat: Tensor,
     pub img_shape: (usize, usize),
-    pub tile2jdx: Vec<usize>,
-    pub jdx2idx: Vec<usize>,
+    pub tile2idx: Vec<usize>,
     pub idx2point: Vec<usize>,
     pub tile_size: usize,
     pub mvp: [f32; 16],
@@ -27,11 +26,10 @@ impl candle_core::CustomOp1 for Layer {
             candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<f32>()?,
             _ => panic!(),
         };
-        let pix2rgb = del_canvas_cpu::gaussian_splatting::rasterize(
+        let pix2rgb = del_canvas_cpu::splat_gaussian2::rasterize(
             point2gauss,
             point2splat,
-            &self.tile2jdx,
-            &self.jdx2idx,
+            &self.tile2idx,
             &self.idx2point,
             self.img_shape,
             self.tile_size,
@@ -66,11 +64,10 @@ impl candle_core::CustomOp1 for Layer {
             candle_core::Storage::Cpu(cpu_storage) => cpu_storage.as_slice::<f32>()?,
             _ => panic!(),
         };
-        let dw_point2gauss = del_canvas_cpu::gaussian_splatting::diff_point2gauss(
+        let dw_point2gauss = del_canvas_cpu::splat_gaussian2::diff_point2gauss(
             point2gauss,
             point2splat,
-            &self.tile2jdx,
-            &self.jdx2idx,
+            &self.tile2idx,
             &self.idx2point,
             self.img_shape,
             self.tile_size,
