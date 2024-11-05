@@ -16,7 +16,7 @@ pub struct Optimizer {
     m: Tensor,
     v: Tensor,
     params: ParamsAdam,
-    ls: del_ls::linearsystem::Solver<f32>,
+    ls: del_fem_ls::linearsystem::Solver<f32>,
     t: f64,
     pub tri2vtx: candle_core::Tensor,
     pub lambda: f64,

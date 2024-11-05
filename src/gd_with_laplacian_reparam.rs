@@ -2,7 +2,7 @@ use candle_core::{Tensor, Var};
 
 pub struct Optimizer {
     vtx2xyz: Var,
-    ls: del_ls::linearsystem::Solver<f32>,
+    ls: del_fem_ls::linearsystem::Solver<f32>,
     pub tri2vtx: Tensor,
     pub lambda: f64,
     pub learning_rate: f64,

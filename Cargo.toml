@@ -28,15 +28,18 @@ num-traits = "0.2.19"
 # del-msh-core = { path = "../del-msh/del-msh-core"}
 # del-canvas-cpu = { path = "../del-canvas/del-canvas-cpu"}
 # del-fem-core = { path = "../del-fem/del-fem-core"}
-# del-ls = { path = "../del-fem/del-ls" }
+# del-fem-ls = { path = "../del-fem/del-fem-ls" }
 
-#del-geo = "0.1.22"
-#del-msh = "0.1.28"
-#del-canvas = "0.1.1"
+del-geo-core = "0.1.32"
+del-geo-nalgebra = "0.1.32"
+del-msh-core = "0.1.36"
+del-canvas-cpu = "0.1.2"
+del-fem-core = "0.1.4"
+del-fem-ls = "0.1.4"
 
-del-geo-core = { git = "https://github.com/nobuyuki83/del-geo.git" }
-del-geo-nalgebra = { git = "https://github.com/nobuyuki83/del-geo.git" }
-del-msh-core = { git = "https://github.com/nobuyuki83/del-msh.git" }
-del-canvas-cpu = { git = "https://github.com/nobuyuki83/del-canvas.git", version = "0.1.2"}
-del-fem-core = { git = "https://github.com/nobuyuki83/del-fem.git"}
-del-ls = { git = "https://github.com/nobuyuki83/del-fem.git" }
+# del-geo-core = { git = "https://github.com/nobuyuki83/del-geo.git" }
+# del-geo-nalgebra = { git = "https://github.com/nobuyuki83/del-geo.git" }
+# del-msh-core = { git = "https://github.com/nobuyuki83/del-msh.git" }
+#del-canvas-cpu = { git = "https://github.com/nobuyuki83/del-canvas.git"}
+# del-fem-core = { git = "https://github.com/nobuyuki83/del-fem.git"}
+# del-fem-ls = { git = "https://github.com/nobuyuki83/del-fem.git" }
