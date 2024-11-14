@@ -22,7 +22,7 @@ fn main() -> anyhow::Result<()> {
     let vtx2xyz = candle_core::Var::from_vec(vtx2xyz, (num_vtx, 3), &candle_core::Device::Cpu)?;
     let img_shape = (300, 300);
     //
-    let transform_ndc2world = del_geo_core::mat4_col_major::identity::<f32>();
+    let transform_ndc2world = del_geo_core::mat4_col_major::from_identity::<f32>();
     let (pix2depth_trg, pix2mask) = {
         let mut img2depth_trg = vec![0f32; img_shape.0 * img_shape.1];
         let mut img2mask = vec![0f32; img_shape.0 * img_shape.1];

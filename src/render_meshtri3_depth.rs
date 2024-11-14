@@ -1,5 +1,6 @@
 use candle_core::{CpuStorage, Layout, Shape, Tensor};
 use std::ops::Deref;
+// use std::time::Instant;
 
 pub struct Layer {
     pub tri2vtx: Tensor,
@@ -49,7 +50,7 @@ impl candle_core::CustomOp1 for Layer {
                     del_geo_core::tri3::intersection_against_ray(&p0, &p1, &p2, &ray_org, &ray_dir)
                         .unwrap();
                 // let q = del_geo::vec3::axpy_(coeff, &ray_dir, &ray_org);
-                pix2depth[i_h * self.img_shape.0 + i_w] = 1. - coeff;
+                pix2depth[i_h * self.img_shape.0 + i_w] = (1. - coeff)*del_geo_core::vec3::norm(&ray_dir);
             }
         }
         let shape = candle_core::Shape::from((self.img_shape.1, self.img_shape.0));
@@ -69,6 +70,7 @@ impl candle_core::CustomOp1 for Layer {
     ) -> candle_core::Result<Option<Tensor>> {
         let (num_vtx, three) = vtx2xyz.shape().dims2()?;
         assert_eq!(three, 3);
+        assert_eq!(pix2depth.shape(), dw_pix2depth.shape());
         let (height, width) = pix2depth.shape().dims2()?;
         let tri2vtx = self.tri2vtx.storage_and_layout().0;
         let tri2vtx = match tri2vtx.deref() {
@@ -118,6 +120,15 @@ impl candle_core::CustomOp1 for Layer {
                 let dw_depth = dw_pix2depth[i_h * self.img_shape.0 + i_w];
                 let (dw_p0, dw_p1, dw_p2) =
                     del_geo_nalgebra::tri3::dw_ray_triangle_intersection_(-dw_depth, 0., 0., &data);
+                let scale = data.dir.norm();
+                let dw_p0 = dw_p0 * scale;
+                let dw_p1 = dw_p1 * scale;
+                let dw_p2 = dw_p2 * scale;
+                /*
+                if dw_depth != 0.0 {
+                    println!("{} {} {} {}", i_tri, _t, dw_p0+dw_p1+dw_p2, data.dir);
+                }
+                 */
                 let iv0 = tri2vtx[i_tri * 3 + 0] as usize;
                 let iv1 = tri2vtx[i_tri * 3 + 1] as usize;
                 let iv2 = tri2vtx[i_tri * 3 + 2] as usize;
@@ -163,7 +174,7 @@ fn test_optimize_depth() -> anyhow::Result<()> {
     let vtx2xyz = candle_core::Var::from_vec(vtx2xyz, (num_vtx, 3), &candle_core::Device::Cpu)?;
     let img_shape = (200, 200);
     //
-    let transform_ndc2world = del_geo_core::mat4_col_major::identity::<f32>();
+    let transform_ndc2world = del_geo_core::mat4_col_major::from_identity::<f32>();
     let (pix2depth_trg, pix2mask) = {
         let mut img2depth_trg = vec![0f32; img_shape.0 * img_shape.1];
         let mut img2mask = vec![0f32; img_shape.0 * img_shape.1];
@@ -273,7 +284,10 @@ pub fn render(
     img_shape: &(usize, usize),
     transform_ndc2world: &[f32; 16],
 ) -> candle_core::Result<Tensor> {
+    // let time0 = Instant::now();
     let (bvhnodes, aabbs) = crate::bvh::from_trimesh3(tri2vtx, vtx2xyz)?;
+    // println!("      time for bvh: {:.2?}", time0.elapsed());
+    // let time0 = Instant::now();
     let pix2tri = crate::raycast_trimesh::raycast3(
         tri2vtx,
         vtx2xyz,
@@ -282,11 +296,17 @@ pub fn render(
         img_shape,
         transform_ndc2world,
     )?;
+    // println!("      time for ray_cast: {:.2?}", time0.elapsed());
+    // let time0 = Instant::now();
+    // render depth
     let render = Layer {
         tri2vtx: tri2vtx.clone(),
         pix2tri: pix2tri.clone(),
         img_shape: *img_shape,
         transform_nbc2world: *transform_ndc2world,
     };
-    vtx2xyz.apply_op1(render)
+    let res = vtx2xyz.apply_op1(render);
+    // println!("      time for render depth: {:.2?}", time0.elapsed());
+    // let time0 = Instant::now();
+    res
 }
