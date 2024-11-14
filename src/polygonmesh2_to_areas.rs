@@ -74,7 +74,7 @@ impl candle_core::CustomOp1 for Layer {
 #[test]
 fn test_backward() -> anyhow::Result<()> {
     let num_vtx = 64;
-    let vtx2xy = del_msh_core::polyloop2::from_circle(1.0, num_vtx);
+    let vtx2xy = del_msh_nalgebra::polyloop2::from_circle(1.0, num_vtx);
     let vtx2xy = {
         candle_core::Var::from_slice(
             vtx2xy.as_slice(),
@@ -131,7 +131,7 @@ fn test_backward() -> anyhow::Result<()> {
 #[test]
 fn area_constraint() -> anyhow::Result<()> {
     let num_vtx = 64;
-    let mut vtx2xy = del_msh_core::polyloop2::from_circle(1.0, num_vtx);
+    let mut vtx2xy = del_msh_nalgebra::polyloop2::from_circle(1.0, num_vtx);
     {
         use rand::Rng;
         let mut rng = rand::thread_rng();

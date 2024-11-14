@@ -75,7 +75,7 @@ impl candle_core::CustomOp1 for crate::vtx2xyz_to_edgevector::Layer {
 fn edge_length_constraint() -> anyhow::Result<()> {
     let num_vtx = 16;
     let edge_length = 2.0f32 * std::f32::consts::PI / num_vtx as f32;
-    let vtx2xy = del_msh_core::polyloop2::from_circle(1.0, num_vtx);
+    let vtx2xy = del_msh_nalgebra::polyloop2::from_circle(1.0, num_vtx);
     let vtx2xy = candle_core::Var::from_slice(
         vtx2xy.as_slice(),
         candle_core::Shape::from((vtx2xy.ncols(), 2)),

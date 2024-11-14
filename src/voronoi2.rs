@@ -22,7 +22,7 @@ impl candle_core::CustomOp1 for crate::voronoi2::Layer {
         let num_vtxv = self.vtxv2info.len();
         let mut vtxv2xy = vec![0f32; num_vtxv * 2];
         for i_vtxv in 0..num_vtxv {
-            let cc = del_msh_core::voronoi2::position_of_voronoi_vertex(
+            let cc = del_msh_nalgebra::voronoi2::position_of_voronoi_vertex(
                 &self.vtxv2info[i_vtxv],
                 &self.vtxl2xy,
                 site2xy,
@@ -207,12 +207,12 @@ pub fn voronoi<F>(
 where
     F: Fn(usize) -> bool,
 {
-    let site2cell = del_msh_core::voronoi2::voronoi_cells(
+    let site2cell = del_msh_nalgebra::voronoi2::voronoi_cells(
         vtxl2xy,
         &site2xy.flatten_all().unwrap().to_vec1::<f32>().unwrap(),
         &site2isalive,
     );
-    let voronoi_mesh = del_msh_core::voronoi2::indexing(&site2cell);
+    let voronoi_mesh = del_msh_nalgebra::voronoi2::indexing(&site2cell);
     let site2_to_voronoi2 = crate::voronoi2::Layer {
         vtxl2xy: Vec::<f32>::from(vtxl2xy),
         vtxv2info: voronoi_mesh.vtxv2info.clone(),
