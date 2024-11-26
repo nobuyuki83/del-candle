@@ -14,12 +14,13 @@ pub mod trimesh3_to_tri2nrm;
 pub mod vector_adam;
 pub mod voronoi2;
 pub mod vtx2xyz_to_edgevector;
+mod bvh_gpu;
 
 pub fn load_img_as_tensor<P>(path: P) -> anyhow::Result<candle_core::Tensor>
 where
     P: AsRef<std::path::Path>,
 {
-    let (data, img_shape, depth) = del_canvas_cpu::load_image_as_float_array(&path)?;
+    let (data, img_shape, depth) = del_canvas_image::load_image_as_float_array(&path)?;
     let r = candle_core::Tensor::from_vec(
         data,
         candle_core::Shape::from((img_shape.0, img_shape.1, depth)),

@@ -1,4 +1,4 @@
-use del_canvas_cpu::canvas_gif::Canvas;
+use del_canvas_image::canvas_gif::Canvas;
 
 use del_candle::voronoi2::VoronoiInfo;
 
@@ -59,7 +59,7 @@ fn main() -> anyhow::Result<()> {
     // dbg!(&site2room);
     // del_canvas from here
     let mut canvas = {
-        del_canvas_cpu::canvas_gif::Canvas::new(
+        del_canvas_image::canvas_gif::Canvas::new(
             "target/area_opt.gif",
             (300, 300),
             &vec![0xffffff, 0x000000],

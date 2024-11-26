@@ -49,14 +49,14 @@ fn main() -> anyhow::Result<()> {
     };
     {
         let pix2depth_trg = pix2depth_trg.flatten_all()?.to_vec1::<f32>()?;
-        del_canvas_cpu::write_png_from_float_image_grayscale(
+        del_canvas_image::write_png_from_float_image_grayscale(
             "target/pix2depth_trg.png",
             &img_shape,
             &pix2depth_trg,
         )?;
         //
         let pix2mask = pix2mask.flatten_all()?.to_vec1::<f32>()?;
-        del_canvas_cpu::write_png_from_float_image_grayscale(
+        del_canvas_image::write_png_from_float_image_grayscale(
             "target/pix2mask.png",
             &img_shape,
             &pix2mask,

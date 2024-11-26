@@ -201,14 +201,14 @@ fn test_optimize_depth() -> anyhow::Result<()> {
     };
     {
         let pix2depth_trg = pix2depth_trg.flatten_all()?.to_vec1::<f32>()?;
-        del_canvas_cpu::write_png_from_float_image_grayscale(
+        del_canvas_image::write_png_from_float_image_grayscale(
             "target/pix2depth_trg.png",
             &img_shape,
             &pix2depth_trg,
         )?;
         //
         let pix2mask = pix2mask.flatten_all()?.to_vec1::<f32>()?;
-        del_canvas_cpu::write_png_from_float_image_grayscale(
+        del_canvas_image::write_png_from_float_image_grayscale(
             "target/pix2mask.png",
             &img_shape,
             &pix2mask,
@@ -246,7 +246,7 @@ fn test_optimize_depth() -> anyhow::Result<()> {
         let pix2diff = pix2depth.sub(&pix2depth_trg)?.mul(&pix2mask)?;
         {
             let pix2depth = pix2depth.flatten_all()?.to_vec1::<f32>()?;
-            del_canvas_cpu::write_png_from_float_image_grayscale(
+            del_canvas_image::write_png_from_float_image_grayscale(
                 "target/pix2depth.png",
                 &img_shape,
                 &pix2depth,
@@ -255,7 +255,7 @@ fn test_optimize_depth() -> anyhow::Result<()> {
                 .abs()?
                 .flatten_all()?
                 .to_vec1::<f32>()?;
-            del_canvas_cpu::write_png_from_float_image_grayscale(
+            del_canvas_image::write_png_from_float_image_grayscale(
                 "target/pix2diff.png",
                 &img_shape,
                 &pix2diff,

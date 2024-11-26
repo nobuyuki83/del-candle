@@ -5,16 +5,19 @@ edition = "2021"
 description = "differential geometry/rendering for huggingface::candle"
 license = "MIT"
 
+[features]
+cuda = ["candle-core/cuda", "del-cudarc-bvh"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-png = "0.17.13"
-nalgebra = "0.33.0"
+
 # candle-core = { git = "https://github.com/huggingface/candle.git", features=["cuda"]}
-# candle-core = "0.6.0"
-# candle-nn = "0.6.0"
 candle-core = { git = "https://github.com/huggingface/candle.git" }
 candle-nn = { git = "https://github.com/huggingface/candle.git" }
+
+png = "0.17.13"
+nalgebra = "0.33.0"
 anyhow = "1.0.86"
 rand = "0.8.5"
 image = "0.25.1"
@@ -23,6 +26,7 @@ rand_chacha = "0.3.1"
 arrayref = "0.3.8"
 num-traits = "0.2.19"
 
+# for development
 del-geo-core = { path = "../del-geo/del-geo-core"}
 del-geo-nalgebra = { path = "../del-geo/del-geo-nalgebra"}
 del-msh-core = { path = "../del-msh/del-msh-core"}
@@ -30,6 +34,9 @@ del-msh-nalgebra = { path = "../del-msh/del-msh-nalgebra"}
 del-canvas-cpu = { path = "../del-canvas/del-canvas-cpu"}
 del-fem-core = { path = "../del-fem/del-fem-core"}
 del-fem-ls = { path = "../del-fem/del-fem-ls" }
+del-canvas-image = {path= "../del-canvas/del-canvas-image"}
+del-raycast-core = {path = "../del-raycast/del-raycast-core"}
+del-cudarc-bvh = {path="../del-cudarc/del-cudarc-bvh", optional = true}
 
 # del-geo-core = "0.1.32"
 # del-geo-nalgebra = "0.1.32"

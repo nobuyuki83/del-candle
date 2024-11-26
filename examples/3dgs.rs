@@ -152,7 +152,7 @@ fn main() -> anyhow::Result<()> {
         };
         {
             let img_data = img_out.flatten_all()?.to_vec1::<f32>()?;
-            del_canvas_cpu::write_png_from_float_image_rgb(
+            del_canvas_image::write_png_from_float_image_rgb(
                 format!("target/points3d_gaussian_{}.png", i_itr),
                 &cam.img_shape,
                 &img_data,
